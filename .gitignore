@@ -1,1 +1,7 @@
 *.asv
+*.pge
+*.seq
+PulCeq/
+pulseq/
+toppe/
+mirt/

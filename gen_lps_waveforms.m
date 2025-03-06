@@ -1,8 +1,8 @@
-function [gx,gy,rf,acq_delay,acq_len,k_in,k_out] = gen_lps_waveforms(varargin)
+function [g,rf,k_in,k_out] = gen_lps_waveforms(varargin)
 
     % define default arguments
     arg.fov = 20; % fov (cm)
-    arg.N = 128; % matrix size
+    arg.N = 128; % nominal matrix size
     arg.nspokes = 23; % number of lps spokes
     arg.nseg = 280; % number of samples/segment
     arg.nrf = 3; % number of samples/rf pulse
@@ -42,20 +42,15 @@ function [gx,gy,rf,acq_delay,acq_len,k_in,k_out] = gen_lps_waveforms(varargin)
     % calculate ramp-up
     nramp = ceil(g_amp / arg.smax / arg.dt);
     ramp_up = linspace(0,1,nramp+1);
-    ramp_up = ramp_up(1,2:end-1);
     nramp = length(ramp_up);
 
     % append the ramp
     gx = [ramp_up*gx(1), gx, (1-ramp_up)*gx(end)];
     gy = [ramp_up*gy(1), gy, (1-ramp_up)*gy(end)];
+    g = [gx(:),gy(:)];
     rf = padarray(rf,[0,nramp],0,"both");
 
-    % calculate acq len and delay
-    acq_delay = nramp + arg.nspokes*arg.nseg;
-    acq_len = arg.nspokes*arg.nseg;
-
     % calculate the full kspace trajectory for each spoke
-    g = [gx(:),gy(:)];
     k_spokes = zeros([arg.nspokes*arg.nseg,2,arg.nspokes]);
     for v = 1:arg.nspokes
         idx_spoke = nramp + (v-1)*arg.nseg + (1:arg.nspokes*arg.nseg);
