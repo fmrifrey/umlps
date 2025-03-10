@@ -1,6 +1,7 @@
 *.asv
 *.pge
 *.seq
+*.mat
 PulCeq/
 pulseq/
 toppe/

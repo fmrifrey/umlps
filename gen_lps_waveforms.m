@@ -1,4 +1,4 @@
-function [g,rf,k_in,k_out] = gen_lps_waveforms(varargin)
+function [g,rf,rf_del,k_in,k_out] = gen_lps_waveforms(varargin)
 
     % define default arguments
     arg.fov = 20; % fov (cm)
@@ -35,20 +35,21 @@ function [g,rf,k_in,k_out] = gen_lps_waveforms(varargin)
 
     % calculate rf amplitude
     rf_amp = arg.fa / (360 * gam * arg.nrf*arg.dt); % (G)
-    
-    % construct rf burst pulse
-    rf = rf_amp * (mod(n,arg.nseg) < arg.nrf) .* (n < arg.nspokes*arg.nseg);
 
     % calculate ramp-up
     nramp = ceil(g_amp / arg.smax / arg.dt);
-    ramp_up = linspace(0,1,nramp+1);
+    ramp_up = linspace(0,1,nramp);
     nramp = length(ramp_up);
+    
+    % construct rf burst pulse
+    n = 0:(arg.nspokes-1)*arg.nseg+arg.nrf-1;
+    rf = rf_amp * (mod(n,arg.nseg) < arg.nrf) .* (n < arg.nspokes*arg.nseg);
+    rf_del = nramp;
 
     % append the ramp
     gx = [ramp_up*gx(1), gx, (1-ramp_up)*gx(end)];
     gy = [ramp_up*gy(1), gy, (1-ramp_up)*gy(end)];
     g = [gx(:),gy(:)];
-    rf = padarray(rf,[0,nramp],0,"both");
 
     % calculate the full kspace trajectory for each spoke
     k_spokes = zeros([arg.nspokes*arg.nseg,2,arg.nspokes]);
