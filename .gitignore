@@ -2,7 +2,10 @@
 *.pge
 *.seq
 *.mat
+*.h5
+*.cfg
+*.dat
 PulCeq/
 pulseq/
 toppe/
-mirt/
+MIRT/

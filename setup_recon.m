@@ -21,6 +21,7 @@ function [A,W,F,b] = setup_recon(varargin)
     arg.cutoff = 0.8;
     arg.rolloff = 0.1;
     arg.dcf = 'cheap';
+    arg.dcf_niter = 3;
     arg.prjs2use = [];
     arg.ints2use = [];
     arg.reps2use = [];
@@ -45,12 +46,12 @@ function [A,W,F,b] = setup_recon(varargin)
         kdata(:, :, l) = shot.Data;
     end
     kdata = reshape(kdata,[ndat,nc,seq_args.nrep,seq_args.nint,seq_args.nprj]);
-    
-    % compress coils
     kdata = permute(kdata,[1,3:5,2]); % n x nrep x nint x nprj x nc
+    
+    % compress to 1 coil
     if nc > 1
-        kdata = ir_mri_coil_compress(kdata,'ncoil',1);
         nc = 1;
+        kdata = ir_mri_coil_compress(kdata,'ncoil',nc);
     end
 
     % generate kspace trajectory
@@ -111,23 +112,23 @@ function [A,W,F,b] = setup_recon(varargin)
     k_out = k_out(:,arg.reps2use,arg.ints2use,arg.prjs2use,:);
 
     % split data and trajectory into 3D volumes
-    % if isempty(arg.rpv)
-    %     arg.rpv = nint*nprj; % each rep is a vol
-    % end
-    % if mod(nrep*nint*nprj, arg.rpv)
-    %     error('total planes (%d) must be divisible by rpv (%d)', ...
-    %         nrep*nint*nprj, arg.rpv)
-    % else
-    %     nvol = nrep*nint*nprj / arg.rpv;
-    % end
-    % kdata = reshape(kdata,[],nvol,nc);
-    % k_in = reshape(k_in,[],nvol,3);
-    % k_out = reshape(k_out,[],nvol,3);
-    
-    % Combine into single vol
-    kdata = reshape(kdata,[],nc);
-    k_in = reshape(k_in,[],3);
-    k_out = reshape(k_out,[],3);
+    if isempty(arg.rpv)
+        arg.rpv = nint*nprj; % each rep is a vol
+    end
+    if mod(nrep*nint*nprj, arg.rpv)
+        error('total planes (%d) must be divisible by rpv (%d)', ...
+            nrep*nint*nprj, arg.rpv)
+    else
+        nvol = nrep*nint*nprj / arg.rpv;
+    end
+    kdata = reshape(kdata,[],nvol,nc);
+    k_in = reshape(k_in,[],nvol,3);
+    k_out = reshape(k_out,[],nvol,3);
+
+    % only recon the first vol for now...
+    kdata = squeeze(kdata(:,1,:));
+    k_in = squeeze(k_in(:,1,:));
+    k_out = squeeze(k_out(:,1,:));
 
     % convert trajectory to spatial frequencies
     omega_in = 2*pi*seq_args.fov/seq_args.N * k_in;
@@ -140,7 +141,7 @@ function [A,W,F,b] = setup_recon(varargin)
     filt_out = kfilt(vecnorm(omega_out,2,2));
     F_in = Gdiag(filt_in);
     F_out = Gdiag(filt_out);
-
+    
     % create NUFFT objects
     nufft_args = {seq_args.N*ones(1,3), 6*ones(1,3), 2*seq_args.N*ones(1,3), ...
         seq_args.N/2*ones(1,3), 'table', 2^10, 'minmax:kb'};
@@ -153,24 +154,23 @@ function [A,W,F,b] = setup_recon(varargin)
             W_in = Gdiag(vecnorm(omega_in,2,2)/pi);
             W_out = Gdiag(vecnorm(omega_out,2,2)/pi);
         case 'pipe'
-            W_in = dcf_pipe(A_in);
-            W_out = dcf_pipe(A_out);
+            W_in = dcf_pipe(A_in,arg.dcf_niter);
+            W_out = dcf_pipe(A_out,arg.dcf_niter);
         otherwise
             error('invalid dcf mode: %s',arg.dcf);
     end
 
     % make y
-    b = reshape(kdata,[],1);
+    b = reshape(kdata,[],nvol);
 
-    % repeat for each scale
-    if seq_args.nrep > 1
-        b = reshape(b,[],seq_args.nrep);
-        A_in = kronI(seq_args.nrep,A_in);
-        W_in = kronI(seq_args.nrep,W_in);
-        F_in = kronI(seq_args.nrep,F_in);
-        A_out = kronI(seq_args.nrep,A_out);
-        W_out = kronI(seq_args.nrep,W_out);
-        F_out = kronI(seq_args.nrep,F_out);
+    % repeat for each volume
+    if nvol > 1
+        A_in = kronI(nvol,A_in);
+        W_in = kronI(nvol,W_in);
+        F_in = kronI(nvol,F_in);
+        A_out = kronI(nvol,A_out);
+        W_out = kronI(nvol,W_out);
+        F_out = kronI(nvol,F_out);
     end
 
     % return
