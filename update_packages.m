@@ -1,5 +1,5 @@
 %% Pulseq
-fprintf('updating PulCeq... ')
+fprintf('updating pulseq... ')
 system('[ -d "./pulseq" ] && rm -rf ./pulseq');
 system('git clone --branch v1.5.0 git@github.com:pulseq/pulseq.git 2> /dev/null');
 addpath pulseq/matlab

@@ -36,11 +36,11 @@ function write_seq(varargin)
     arg.nprj = 16; % number of projections (3D thru-plane rotations)
     arg.nspokes = 23; % number of lps spokes
     arg.nseg = 280; % number of samples/segment
-    arg.nrf = 3; % number of samples/rf pulse
+    arg.nrf = 4; % number of samples/rf pulse
     arg.fa = 4; % rf flip angle (deg)
     arg.gmax = 4; % max gradient amplitude (G/cm)
     arg.smax = 500; % max slew rate (G/cm/s)
-    arg.plotseq = true; % option to plot the sequence
+    arg.plotseq = false; % option to plot the sequence
     arg.pislquant = 1; % number of TRs to use for prescan
     arg.writepge = true; % option to convert seq to pge file
     
@@ -79,8 +79,7 @@ function write_seq(varargin)
     G0 = padarray(g_wav.',[1,0],0,'post');
 
     % create rf (only take 1st half to play during block 1)
-    rf_wav = sys.gamma * rf_wav; % kHz
-    rf = mr.makeArbitraryRf(rf_wav, arg.fa/180*pi, ...
+    rf = mr.makeArbitraryRf(rf_wav, arg.nspokes*arg.fa*pi/180, ...
         'delay', arg.dt*rf_del, ...
         'use', 'excitation', ...
         'system', sys);
