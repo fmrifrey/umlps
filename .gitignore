@@ -1,12 +1,30 @@
+# matlab autosave files
 *.asv
+
+# sequence files
 *.pge
 *.seq
-*.mat
-*.h5
-*.cfg
-*.dat
+
+# package folders
 PulCeq/
 pulseq/
 toppe/
 MIRT/
+
+# data
+*.h5
+*.dat
+*.mat
+*.cfg
 example_data/
+
+# latex compiled files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.pdf
