@@ -1,0 +1,402 @@
+% Source: http://tex.stackexchange.com/a/150903/23931
+\makeatletter
+\def\input@path{{../}}
+\makeatother
+\documentclass[11pt]{article}
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\renewcommand{\headrulewidth}{1.5pt}
+%\usepackage{tgschola} % or any other font package you like
+\usepackage{times}
+\usepackage{titlesec}
+\titlespacing*{\section}
+{0pt}{0.5ex}{0.7ex}
+%\renewcommand{\familydefault}{\rmdefault}
+\usepackage{lastpage}
+\usepackage{color}
+
+\input{qq_defs}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{%
+  \footnotesize
+  \fontsize{12}{12}
+  \large \soptitle\hspace{1cm}
+  \institution \hspace{1.2cm}
+  \yourname
+  }
+\fancyfoot[C]{\thepage}
+
+\newcommand{\institution}{Assignment \#1}
+\newcommand{\soptitle}{EECS 559}
+\newcommand{\yourname}{David Frey}
+%\newcommand{\yourweb}{https://www.abcd.com/}
+%\newcommand{\youremail}{email@address.edu}
+
+\newcommand{\statement}[1]{\par\medskip
+  \underline{\textcolor{blue}{\textbf{#1:}}}\space
+}
+
+
+\begin{document}
+
+\begin{description}
+\item[Problem 1] (Linear program) 
+
+\begin{description}
+    \item[(a)] 
+    Given $A \in \mathbb{R}^{m \times n}$ and $y \in \mathbb{R}^m$,
+    the basis pursuit problem
+    \begin{equation*}
+        \min_{x \in \mathbb{R}^n} \norm{x}{1}, \quad \text{s.t.} \quad Ax = y
+    \end{equation*}
+    is a convex problem iff the objective function and all constraints are convex.
+    We can show that the objective function $f_0 = \norm{x}{1}$ as follows:
+    \begin{equation*}
+        \text{let} \quad z_1,z_2 \in \mathbb{R}^n, \lambda \in (0,1) \\
+    \end{equation*}
+    \begin{equation*}
+        \begin{aligned}
+            f_0(\lambda z_1 + (1-\lambda)z_2) 
+            &= \norm{\lambda z_1 + (1-\lambda)z_2}{1} \\
+            &= \sum_{i=1}^{n} \abs{\lambda (z_1)_i + (1-\lambda)(z_2)_i} \\
+            &\leq \sum_{i=1}^{n} \abs{\lambda (z_1)_i} + \abs{(1-\lambda)(z_2)_i} \\
+            &= \lambda \sum_{i=1}^{n} \abs{(z_1)_i} + (1-\lambda) \sum_{i=1}^{n} \abs{(z_2)_i} \\
+            &= \lambda f_0(z_1) + (1-\lambda) f_0(z_2)
+        \end{aligned}
+    \end{equation*}
+    The constraint $f_1 = Ax - y$ is also convex because $A$ is a linear operator and $y$ is a constant vector.
+    Therefore, the basis pursuit problem is a convex problem.
+    The problem can be recast as a linear program as follows:
+    \begin{equation*}
+        \text{let} \quad (z_+)_i = \begin{cases}
+            z_i & \text{if } z_i \geq 0 \\
+            0 & \text{if } z_i < 0
+        \end{cases}
+        \quad \text{and} \quad (z_-)_i = \begin{cases}
+            -z_i & \text{if } z_i < 0 \\
+            0 & \text{if } z_i \geq 0
+        \end{cases}
+    \end{equation*}
+    \begin{equation*}
+        f_0(z) = \norm{z}{1} = \sum_{i=1}^{n} (z_+)_i + (z_-)_i
+        = 1^T z_+ + 1^T z_-
+    \end{equation*}
+    \begin{equation*}
+        \begin{aligned}
+            \rightarrow \min_{x \in \mathbb{R}^n} \norm{x}{1}, \quad \text{s.t.} \quad Ax = y &&
+            \\ = \min_{x_+,x_- \in \mathbb{R}^n} 1^Tx_+ + 1^Tx_-, \quad \text{s.t.} \quad A(x_+ + x_-) = y &&
+        \end{aligned}
+    \end{equation*}
+
+    \item[(b)]
+    The optimization problem
+    \begin{equation*}
+        \min_{x \in \mathbb{R}^n} \norm{Ax-y}{\infty}, \quad \text{s.t.} \norm{x}{\infty} \leq b
+    \end{equation*}
+    where $A \in \mathbb{R}^{m \times n}$ and $y \in \mathbb{R}^m$ and $b>0$, can be recast as a linear program as follows:
+    \begin{equation*}
+        \begin{aligned}
+            \min_{v \in \mathbb{R}^n, t \in \mathbb{R}}\norm{v}{\infty} = \min_{t \in \mathbb{R}} t, \quad \text{s.t.} \quad v \leq t \mathbf{1}, -v \leq t \mathbf{1} \\
+            \rightarrow \min_{x \in \mathbb{R}^n} \norm{Ax-y}{\infty} = \min_{x \in \mathbb{R}^n, t \in \mathbb{R}} t\\
+            \text{s.t.} \quad Ax-y \leq t \mathbf{1}, \quad y-Ax \leq t \mathbf{1}, \quad x \leq b \mathbf{1}, \quad -x \leq b \mathbf{1}
+        \end{aligned}
+    \end{equation*}
+
+\end{description}
+
+\item[Problem 2]  (Global Optimality of Convex Problems)
+
+\begin{description}
+    \item[(a)] 
+    $x_0$ is a local minimizer of the convex function $f: \mathbb{R}^n \rightarrow \mathbb{R}$,
+    for some local neighborhood $\mathcal{N} \subset \mathbb{R}^n$:
+    \begin{equation}\label{eq:local_min}
+        f(x_0) \leq f(x) \quad \forall x \in \mathcal{N} = \{x \in \mathbb{R}^n: \norm{x-x_0}{2} \leq \epsilon\}
+    \end{equation}
+    $x_0$ is not a global minimizer of $f$ iff:
+    \begin{equation}\label{eq:global_min}
+        \exists x_* \in \mathbb{R}^n: f(x_*) < f(x_0)
+    \end{equation}
+    Then, by the convexity of $f$, we can define an upper bound on the values between $x_0$ and $x_*$:
+    \begin{equation*}
+        \begin{aligned}
+            f(\lambda x_* + (1-\lambda)x_0) &\leq \lambda f(x_*) + (1-\lambda)f(x_0) \\
+            &< \lambda f(x_0) + (1-\lambda)f(x_0) \quad \text{(by eq.\ref{eq:global_min})}\\
+            &= f(x_0)
+        \end{aligned}
+    \end{equation*}
+    However, as $\lambda \rightarrow 0$, $\lambda x_* + (1-\lambda)x_0 \in \mathcal{N}$, which implies that:
+    \begin{equation*}
+        \exists{x \in \mathcal{N}}: f(x) < f(x_0)
+    \end{equation*}
+    Which directly contradicts the definition of a local minimizer in eq.\ref{eq:local_min}.
+    Therefore, $x_0$ must be a global minimizer of the convex function $f$.
+
+    \item[(b)]
+    Furthermore, suppose $f\in\mathcal{C}^1$. If $\nabla f(x_*) = 0$, then by the first order
+    Taylor expansion around $x_*$, $\forall x \in \mathbb{R}^n$:
+    \begin{equation*}
+        \begin{aligned}
+            f(x) &\geq f(x_0) + \langle  \nabla f(x_*), x-x_* \rangle \\
+            &= f(x_*)
+        \end{aligned}
+    \end{equation*}
+    Therefore, $x_*$ is a global minimizer of $f$ if $\nabla f(x_*) = 0$. \\
+    Conversely, if $x_*$ is a global minimizer of $f$, (i.e. $f(x_*) \leq f(x) \forall x \in \mathbb{R}^n$), then by the definition of the gradient:
+    \begin{equation*}
+        \begin{aligned}
+            \nabla f(x_*) = \lim_{\Delta x \rightarrow 0} \frac{f(x_* + \Delta x) - f(x_*)}{\Delta x} \geq \lim_{\Delta x \rightarrow 0} \frac{f(x_*) - f(x_*)}{\Delta x} = 0
+        \end{aligned}
+    \end{equation*}
+    And, for the reverse direction:
+    \begin{equation*}
+        \begin{aligned}
+            \nabla f(x_*) = \lim_{\Delta x \rightarrow 0} \frac{f(x_*) - f(x_* - \Delta x)}{\Delta x} \leq 0
+        \end{aligned}
+    \end{equation*}
+    Therefore, $\nabla f(x_*) = 0$ if $x_*$ is a global minimizer of $f$.
+
+
+\end{description}
+
+\item[Problem 3]  (Operations that Preserve Convexity) \\
+Given $f(x), f_1(x), f_2(x), ..., f_n(x)$ are convex functions defined on $\mathbb{R}^n$, we can show that the following operations preserve convexity:
+\begin{description}
+    \item[(a)] (Nonnegative weighted sum)
+    \begin{equation*}
+        g(x):= \sum_{i=1}^{n} \alpha_i f_i(x), \quad \alpha_i \geq 0 \quad \forall i = 1, 2, ..., n
+    \end{equation*}
+    \begin{equation*}
+        \text{let} \quad x_1,x_2 \in \mathbb{R}^n, \lambda \in (0,1) \\
+    \end{equation*}
+    \begin{equation*}
+        \begin{aligned}
+            g(\lambda x_1 + (1-\lambda)x_2) 
+            &= \sum_{i=1}^{n} \alpha_i f_i(\lambda x_1 + (1-\lambda)x_2) \\
+            &\leq \sum_{i=1}^{n} \alpha_i (\lambda f_i(x_1) + (1-\lambda)f_i(x_2)) \\
+            &= \lambda \sum_{i=1}^{n} \alpha_i f_i(x_1) + (1-\lambda) \sum_{i=1}^{n} \alpha_i f_i(x_2) \\
+            &= \lambda g(x_1) + (1-\lambda) g(x_2)
+        \end{aligned}
+    \end{equation*}
+
+    \item[(b)] (Pointwise maximum)
+    \begin{equation*}
+        g(x):= \max_{i=1,2,...,n} \{f_1(x), f_2(x), ..., f_n(x)\}
+    \end{equation*}
+    \begin{equation*}
+        \text{let} \quad x_1,x_2 \in \mathbb{R}^n, \lambda \in (0,1) \\
+    \end{equation*}
+    \begin{equation*}
+        \begin{aligned}
+            g(\lambda x_1 + (1-\lambda)x_2)
+            &= \max_{i=1,2,...,n} \{f_i(\lambda x_1 + (1-\lambda)x_2) \quad \forall i=1,2,...n\} \\
+            &\leq \max_{i=1,2,...,n} \{\lambda f_i(x_1) + (1-\lambda) f_i(x_2) \quad \forall i=1,2,...n\} \\
+            &= \lambda \max_{i=1,2,...,n} \{f_i(x_1)\} + (1-\lambda) \max_{i=1,2,...,n} \{f_i(x_2)\} \\
+            &= \lambda g(x_1) + (1-\lambda) g(x_2)
+        \end{aligned}
+    \end{equation*}
+
+    \item[(c)] (Composition with an affine mapping)
+    \begin{equation*}
+        g(x):= f(Ax+b), \quad A \in \mathbb{R}^{n \times m}, b \in \mathbb{R}^n
+    \end{equation*}
+    \begin{equation*}
+        \text{let} \quad x_1,x_2 \in \mathbb{R}^m, \lambda \in (0,1) \\
+    \end{equation*}
+    \begin{equation*}
+        \begin{aligned}
+            g(\lambda x_1 + (1-\lambda)x_2)
+            &= f(A(\lambda x_1 + (1-\lambda)x_2) + b) \\
+            &= f(\lambda Ax_1 + (1-\lambda)Ax_2 + b) \\
+            &= f(\lambda Ax_1 + (1-\lambda)Ax_2 + \lambda b + (1-\lambda) b) \\
+            &\leq \lambda f(Ax_1 + b) + (1-\lambda)f(Ax_2 + b) \\
+            &= \lambda g(x_1) + (1-\lambda) g(x_2)
+        \end{aligned}
+    \end{equation*}
+
+    \item[(d)] (Restriction to a line)
+    \begin{equation*}
+        g(x):= f(x+ty), \quad x,y \in \mathbb{R}^n, t \in \mathbb{R}
+    \end{equation*}
+    \begin{equation*}
+        \text{let} \quad t_1,t_2 \in \mathbb{R}, \lambda \in (0,1) \\
+    \end{equation*}
+    \begin{equation*}
+        \begin{aligned}
+            g(\lambda t_1 + (1-\lambda)t_2)
+            &= f(x + (\lambda t_1 + (1-\lambda)t_2)y) \\
+            &= f(\lambda x + (\lambda - 1) x + \lambda t_1 y + (1-\lambda)t_2 y) \\
+            &= f(\lambda(x + t_1y) + (1-\lambda)(x + t_2y)) \\
+            &\leq \lambda f(x + t_1y) + (1-\lambda)f(x + t_2y) \\
+            &= \lambda g(t_1) + (1-\lambda) g(t_2)
+        \end{aligned}
+    \end{equation*}
+
+\end{description}
+
+\item[Problem 4]  (Matrix Norms and Approximations)
+
+\begin{description}
+    \item[(a)]
+    The Shatten p-norm is unitarily invariant for any $p > 0$ even though it is only a norm for $p \geq 1$:
+    \begin{equation*}
+        \norm{A}{p} = \left( \sum_{i=1}^{n} \sigma_i^p (A) \right)^{1/p}
+    \end{equation*}
+    where $\sigma_i$ are the singular values of $A$. $A=U\Sigma V^T$ is the singular value decomposition of $A$.
+    Let $Q$ be a unitary matrix, then $QU$ is also unitary. Therefore, $QA$ has the same singular values as $A$
+    since $QA=QU\Sigma V^T$ is a valid SVD of $QA$. So:
+    \begin{equation*}
+        \norm{QA}{p} = \left( \sum_{i=1}^{n} \sigma_i^p (QA) \right)^{1/p} = \left( \sum_{i=1}^{n} \sigma_i^p (A) \right)^{1/p} = \norm{A}{p}
+    \end{equation*}
+
+    \item[(b)] 
+    Let $A \in \mathbb{R}^{m \times n} (n>m)$ with compact SVD:
+    \begin{equation*}
+        A=\sum_{i=1}^{m}\sigma_iu_iv_i^T=\sum_{i=1}^{r}\sigma_iu_iv_i^T + \sum_{i=r+1}^{m}\sigma_iu_iv_i^T, \quad r < m
+    \end{equation*}
+    Therefore, $\norm{A-X}{F} \geq \sqrt(\left(\sum_{i=r+1}^{m}\sigma_i^2\right))$ for any rank-$r$ approximation $X$.
+    If $A_r=\sum_{i=1}^{r}\sigma_iu_iv_i^T$ is the truncated SVD of $A$, then $\norm{A-A_r}{F}=\sqrt(\left(\sum_{i=r+1}^{m}\sigma_i^2\right))$
+    is the minimum possible error for any rank-$r$ approximation of $A$, and $A_r$ is the best rank-$r$ approximation of $A$.
+    Moreover, the solution is unique iff $\sigma_r > \sigma_{r+1}$, since otherwise $X=\sigma_{r+1}u_{r+1}v_{r+1}^T+\sum_{i=1}^{r-1}\sigma_iu_iv_i^T$
+    is also a valid approximation where $\norm{A-X}{F}=\norm{A-A_r}{F}$.
+        
+\end{description}
+
+\item[Problem 5]  (Rate of Convergence)
+
+\begin{description}
+    \item[(a)]
+    If $x_k=1+(1+\frac{1}{2}^{2^k})$ is Q-quadratically convergent to $x_*=1$
+    iff $\exists\gamma\in\mathbb{R}: |x_k-1| \leq \gamma|x_{k-1}-1|^2$
+    \begin{equation*}
+        \begin{aligned}
+            \rightarrow \gamma = \lim_{k\rightarrow\infty} \frac{|x_k-1|}{|x_{k-1}-1|^2}
+            &= \lim_{k\rightarrow\infty} \frac{|x_{k+1}-1|}{|x_k-1|^2}
+            \\ &= \lim_{k\rightarrow\infty} \frac{1+\frac{1}{2}^{2^{k+1}}-1}{(1+\frac{1}{2}^{2^k}-1)^2}
+            \\ &= \lim_{k\rightarrow\infty} \frac{\frac{1}{2}^{2^{k+1}}}{(\frac{1}{2}^{2^k})^2} = \lim_{k\rightarrow\infty} \frac{\frac{1}{2}^{2^{k+1}}}{\frac{1}{2}^{2^{k+1}}}
+            \\ &= 1
+        \end{aligned}
+    \end{equation*}
+    Therefore, $x_k$ is Q-quadratically convergent to $x_*=1$.
+
+    \item[(b)]
+    The sequence $x_k=\frac{1}{k!}$ converges to $x_*=\lim_{k\rightarrow\infty}\frac{1}{k!}=0$. \\
+    $x_k$ is Q-superlinearly convergent to $x_*=0$
+    iff $\lim_{k\rightarrow\infty}\frac{|x_k|}{|x_{k-1}|}=0$
+    \begin{equation*}
+        \begin{aligned}
+            \rightarrow \lim_{k\rightarrow\infty}\frac{|x_k|}{|x_{k-1}|}
+            &= \lim_{k\rightarrow\infty}\frac{(k-1)!}{k!} \\
+            &= \lim_{k\rightarrow\infty}\frac{(k-1)!}{k(k-1)!} \\
+            &= \lim_{k\rightarrow\infty}\frac{1}{k} = 0
+        \end{aligned}
+    \end{equation*}
+    Therefore, $x_k$ is Q-superlinearly convergent to $x_*=0$. \\
+    $x_k$ is Q-quadratically convergent to $x_*=0$
+    iff $\exists\gamma\in\mathbb{R}: |x_k| \leq \gamma|x_{k-1}|^2$
+    \begin{equation*}
+        \begin{aligned}
+            \rightarrow \gamma = \lim_{k\rightarrow\infty} \frac{|x_k|}{|x_{k-1}|^2}
+            &= \lim_{k\rightarrow\infty} \frac{|x_{k+1}|}{|x_k|^2} \\
+            &= \lim_{k\rightarrow\infty} \frac{\frac{1}{(k+1)!}}{\frac{1}{k!^2}} \\
+            &= \lim_{k\rightarrow\infty} \frac{k!^2}{(k+1)!} \\
+            &= \lim_{k\rightarrow\infty} \frac{k!k!}{(k+1)k!} \\
+            &= \lim_{k\rightarrow\infty} \frac{k!}{k+1} = \infty
+        \end{aligned}
+    \end{equation*}
+    Therefore, $x_k$ is not Q-quadratically convergent to $x_*=0$. \\
+
+    \item[(c)]
+    Consider the sequence $\{x_k\}$ defined by:
+    \begin{equation*}
+        x_k = \begin{cases}
+            (\frac{1}{4})^{2^k}, & k\text{ even,}\\
+            x_{k-1}/k, & k\text{ odd.}
+        \end{cases}
+    \end{equation*}
+    $\{x_k\}$ converges to $x_*=\lim_{k\rightarrow\infty}(\frac{1}{4})^{2^k}=0$ for even $k$, and
+    $x_*=\lim_{k\rightarrow\infty}x_{k-1}/k=\lim_{k\rightarrow\infty}(\frac{1}{4})^{2^{k-1}}/k=0$ for odd $k$. \\
+    $\{x_k\}$ is Q-superlinearly convergent to $x_*=0$
+    iff $\lim_{k\rightarrow\infty}\frac{|x_k|}{|x_{k-1}|}=0$
+    \begin{equation*}
+        \begin{aligned}
+            \lim_{k\rightarrow\infty}\frac{|x_k|}{|x_{k-1}|} &= \begin{cases}
+                \lim_{k\rightarrow\infty}\frac{|x_{k+1}|}{|x_k|}, & k\text{ even,}\\
+                \lim_{k\rightarrow\infty}\frac{|x_k|}{|x_{k-1}|}, & k\text{ odd.}
+            \end{cases} \\
+            &= \begin{cases}
+                \lim_{k\rightarrow\infty}\frac{x_k/(k+1)}{x_k}, & k\text{ even,}\\
+                \lim_{k\rightarrow\infty}\frac{x_{k-1}/k}{x_{k-1}}, & k\text{ odd.}
+            \end{cases} \\
+            &= \begin{cases}
+                \lim_{k\rightarrow\infty}\frac{1}{k+1}, & k\text{ even,}\\
+                \lim_{k\rightarrow\infty}\frac{1}{k}, & k\text{ odd.}
+            \end{cases}
+            = 0
+        \end{aligned}
+    \end{equation*}
+    Therefore, $\{x_k\}$ is Q-superlinearly convergent to $x_*=0$. \\
+    $\{x_k\}$ is Q-quadratically convergent to $x_*=0$
+    iff $\exists\gamma\in\mathbb{R}: |x_k| \leq \gamma|x_{k-1}|^2$
+    \begin{equation*}
+        \begin{aligned}
+            \rightarrow\gamma=\lim_{k\rightarrow\infty}\frac{|x_k|}{|x_{k-1}|^2} &= \begin{cases}
+                \lim_{k\rightarrow\infty}\frac{|x_{k+1}|}{|x_k|^2}, & k\text{ even,}\\
+                \lim_{k\rightarrow\infty}\frac{|x_k|}{|x_{k-1}|^2}, & k\text{ odd.}
+            \end{cases} \\
+            &= \begin{cases}
+                \lim_{k\rightarrow\infty}\frac{x_k/(k+1)}{x_k^2}, & k\text{ even,}\\
+                \lim_{k\rightarrow\infty}\frac{x_{k-1}/k}{x_{k-1}^2}, & k\text{ odd.}
+            \end{cases} \\
+            &= \begin{cases}
+                \lim_{k\rightarrow\infty}\frac{1}{x_k(k+1)}, & k\text{ even,}\\
+                \lim_{k\rightarrow\infty}\frac{1}{x_{k-1}k}, & k\text{ odd.}
+            \end{cases} \\
+            &= \begin{cases}
+                \lim_{k\rightarrow\infty}\frac{1}{(\frac{1}{4})^{2^k}(k+1)}, & k\text{ even,}\\
+                \lim_{k\rightarrow\infty}\frac{1}{(\frac{1}{4})^{2^{k-1}}k}, & k\text{ odd.}
+            \end{cases} \\
+            &= \begin{cases}
+                \lim_{k\rightarrow\infty}\frac{4^{2^k}}{k+1}, & k\text{ even,}\\
+                \lim_{k\rightarrow\infty}\frac{4^{2^{k-1}}}{k}, & k\text{ odd.}
+            \end{cases}
+            = \infty
+        \end{aligned}
+    \end{equation*}
+    Therefore, $\{x_k\}$ is not Q-quadratically convergent to $x_*=0$. \\
+    $\{x_k\}$ is R-quadratically convergent to $x_*=0$
+    iff $\exists\{\rho_k\}_{k\geq1}: \min_{x_*\in\Xi}\norm{x_k-x_*}{2}\leq\rho_k$, and $\rho_k$ is Q-quadratically convergent to 0
+    \begin{equation*}
+        \begin{aligned}
+            \rightarrow\min_{x_*\in\Xi}\norm{x_k-x_*}{2} &= |x_k| \\
+            &= \begin{cases}
+                (\frac{1}{4})^{2^k}, & k\text{ even,}\\
+                x_{k-1}/k, & k\text{ odd.}
+            \end{cases} \\
+            &\leq \rho_k=(\frac{1}{4})^{2^{k-1}}
+        \end{aligned}
+    \end{equation*}
+    $\{\rho_k\}$ is Q-quadratically convergent to $\rho_*=0$
+    iff $\exists\gamma\in\mathbb{R}: |\rho_k| \leq \gamma|\rho_{k-1}|^2$
+    \begin{equation*}
+        \begin{aligned}
+            \rightarrow \gamma = \lim_{k\rightarrow\infty} \frac{|\rho_k|}{|\rho_{k-1}|^2}
+            &= \lim_{k\rightarrow\infty} \frac{|\rho_{k+1}|}{|\rho_k|^2} \\
+            &= \lim_{k\rightarrow\infty} \frac{(\frac{1}{4})^{2^k}}{((\frac{1}{4})^{2^{k-1}})^2} \\
+            &= \lim_{k\rightarrow\infty} \frac{(\frac{1}{4})^{2^k}}{(\frac{1}{4})^{2^k}} \\
+            &= 1
+        \end{aligned}
+    \end{equation*}
+    Therefore, $\{\rho_k\}$ is Q-quadratically convergent to $\rho_*=0$ and
+    $\{x_k\}$ is R-quadratically convergent to $x_*=0$. \\
+
+\end{description}
+
+
+\end{description}
+
+\end{document}

@@ -12,7 +12,9 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
 %
 % Outputs:
 % Fs_in - cell array of nufft operators per volume (echo in)
+%   if spokewise = true, Fs_in will be spokewise and framewise
 % Fs_out - cell array of nufft operators per volume (echo out)
+%   same applies for spokewise = true
 % b - formatted kspace measurements
 %
 % Note: each scale is treated as a seperate frame of the reconstruction
@@ -64,13 +66,17 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
     else
         nvol = nrep*nint*nprj / arg.rpv;
     end
-    kdata = reshape(kdata,[],nvol,size(kdata,5));
+    nc = size(kdata,5);
+    kdata = reshape(kdata,[],nvol,nc);
     k_in = reshape(k_in,[],nvol,3);
     k_out = reshape(k_out,[],nvol,3);
 
     % convert trajectory to spatial frequencies
     omega_in = 2*pi*seq_args.fov/seq_args.N * k_in;
     omega_out = 2*pi*seq_args.fov/seq_args.N * k_out;
+
+    % format the kspace measurements volume-wise
+    b = reshape(kdata,[],nvol,nc);
 
     % initialize volume-wise nufft operators
     Fs_in = cell(nvol,1);
@@ -88,14 +94,11 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
 
         % assemble nufft object for whole volume
         Fs_in{ivol} = Gnufft( ...
-                true(seq_args.N*ones(1,3)), ...
-                [omegav_in, nufft_args]);
+            true(seq_args.N*ones(1,3)), ...
+            [omegav_in, nufft_args]);
         Fs_out{ivol} = Gnufft( ...
-                true(seq_args.N*ones(1,3)), ...
-                [omegav_out, nufft_args]);
+            true(seq_args.N*ones(1,3)), ...
+            [omegav_out, nufft_args]);
     end
-
-    % format the kspace measurements
-    b = kdata;
 
 end

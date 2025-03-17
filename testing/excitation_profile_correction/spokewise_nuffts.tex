@@ -1,0 +1,40 @@
+% Source: http://tex.stackexchange.com/a/150903/23931
+\makeatletter
+\def\input@path{{../}}
+\makeatother
+\documentclass[11pt]{article}
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\renewcommand{\headrulewidth}{1.5pt}
+\usepackage{times}
+\usepackage{titlesec}
+\titlespacing*{\section}
+{0pt}{0.5ex}{0.7ex}
+\usepackage{lastpage}
+\usepackage{color}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{%
+  \footnotesize
+  \fontsize{12}{12}
+  \large \soptitle\hspace{1cm}
+  \institution \hspace{1.2cm}
+  \yourname
+  }
+\fancyfoot[C]{\thepage}
+
+\newcommand{\institution}{Assignment \#1}
+\newcommand{\soptitle}{EECS 559}
+\newcommand{\yourname}{David Frey}
+%\newcommand{\yourweb}{https://www.abcd.com/}
+%\newcommand{\youremail}{email@address.edu}
+
+\newcommand{\statement}[1]{\par\medskip
+  \underline{\textcolor{blue}{\textbf{#1:}}}\space
+}
+
+\begin{document}
+\end{document}
