@@ -40,8 +40,8 @@ for ivol = 1:nvol
 
     % get dc-NUFFT solution for volume
     fprintf('reconstructing initial sol to vol %d/%d\n', ivol, nvol);
-    xv0 = (Wv_in*Hv_in*Fv_in + Wv_in*Hv_in*Fv_in)' * b_cc; % adjoint solution
-    xv0 = ir_wls_init_scale(Hv_in*Fv_in + Hv_in*Fv_in, b_cc, xv0); % correct scale
+    xv0 = (Wv_in*Hv_in*Fv_in + Wv_out*Hv_out*Fv_out)' * b_cc; % adjoint solution
+    xv0 = ir_wls_init_scale(Hv_in*Fv_in + Hv_out*Fv_out, b_cc, xv0); % correct scale
     x0(:,:,:,ivol) = reshape(xv0,Fs_in{1}.idim);
 
 end

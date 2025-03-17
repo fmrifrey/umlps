@@ -64,7 +64,7 @@ function write_seq(varargin)
     warning('OFF', 'mr:restoreShape');
 
     % create looping star waveforms
-    [g_wav,rf_wav,rf_del] = gen_lps_waveforms( ...
+    [g_wav,rf_wav,rf_del] = lps.seq.gen_lps_waveforms( ...
         'fov', arg.fov, ... % fov (cm)
         'N', arg.N, ... % nominal matrix size
         'nspokes', arg.nspokes, ... % number of lps spokes
@@ -100,7 +100,7 @@ function write_seq(varargin)
             for iint = 1:arg.nint
         
                 % rotate the gradients based on a 3DTGA rotation sequence
-                R = rot_3dtga(iprj, iint);
+                R = lps.seq.rot_3dtga(iprj, iint);
                 iG = R * G0;
         
                 % write fID portion to sequence
