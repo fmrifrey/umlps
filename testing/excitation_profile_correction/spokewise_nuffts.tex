@@ -50,6 +50,7 @@ However, because the gradients at each RF pulse is fixed, and the B1 amplitude i
 the only practical way to increase the flip angle would be to increase the duration of the RF pulse.
 Increasing the duration of the RF pulse will also introduce a changing excitation profile across each spoke.
 Longer RF pulses will have smaller bandwidth, which will introduce a blurring effect around the edges of the image.
+Higher gradient amplitudes which are required for high spatial resolution will also introduce this effect.
 I propose to correct for this blurring effect by considering the excitation profile in the forward model of our reconstruction,
 similar to the methods presented in \cite{Li2014}.
 

@@ -52,13 +52,28 @@ The IHS update step is computed as:
     &= \text{arg}\min_x \frac{1}{2}\|S^{(t)}Ax\|_2^2 - (H_S^{(t)}x^{(t)} - G^{(t)})^T x \\
   \end{aligned}
 \end{equation*}
-Let $\tilde{f}_S^{(t)}(x) := \frac{1}{2}\|SAx\|_2^2 - (H_Sx^{(t)} - G^{(t)})^T x$. Then:
+Let $\tilde{f}_S^{(t)}(x) := \frac{1}{2}\|SAx\|_2^2 - (H_Sx^{(t)} - G^{(t)})^T x$. Then the gradient can be calculated as:
 \begin{equation*}
   \begin{aligned}
-    \nabla \tilde{f}_S^{(t)}(x^{(t+1)}) &= (S^{(t)}A)^TS^{(t)}Ax^{(t+1)} - (H_S^{(t)}x^{(t)} - G^{(t)}) \\
-    &= H_S^{(t)}x^{(t+1)} - (H_S^{(t)}x^{(t)} - G^{(t)}) \\
-    &= 0 \\
-    \rightarrow x_*^{(t+1)} &= \text{arg}\min_x \frac{1}{2}\|H_S^{(t)}x - (H_S^{(t)}x^{(t)} - G^{(t)})\|_2^2 \\
+    \nabla \tilde{f}_S^{(t)}(x) &= (S^{(t)}A)^TS^{(t)}Ax - (H_S^{(t)}x^{(t)} - G^{(t)}) \\
+    &= H_S^{(t)}x - (H_S^{(t)}x^{(t)} - G^{(t)}) \\
+  \end{aligned}
+\end{equation*}
+Then:
+\begin{equation*}
+  \begin{aligned}
+    \|\nabla \tilde{f}_S^{(t)}(x_1) -  \nabla \tilde{f}_S^{(t)}(x_1)\|_2
+    &= \|H_S^{(t)}x_1 - H_S^{(t)}x_2 \|_2 \\
+    &= \|H_S^{(t)}(x_1 - x_2)\|_2 \\
+    &\leq \|H_S^{(t)}\|_2\|(x_1 - x_2)\|_2
+  \end{aligned}
+\end{equation*}
+Therefore, $\nabla \tilde{f}_S^{(t)}(x)$ is L-Lipschitz with $L = \|H_S^{(t)}\|_2 = \|S^{(t)}A\|_2^2$.
+Alternatively, by setting the gradient to zero at minimizer $x_*^{(t+1)}$, we get:
+\begin{equation*}
+  \begin{aligned}
+    \nabla \tilde{f}_S^{(t)}(x_*^{(t+1)}) &= H_S^{(t)}x_*^{(t+1)} - (H_S^{(t)}x^{(t)} - G^{(t)}) &= 0 \\
+    \rightarrow x_{**}^{(t+1)} &= \text{arg}\min_x \|H_S^{(t)}x - (H_S^{(t)}x^{(t)} - G^{(t)})\|_2^2
   \end{aligned}
 \end{equation*}
 Therefore, the IHS update step is equivalent to solving the following least squares problem:
@@ -66,17 +81,6 @@ Therefore, the IHS update step is equivalent to solving the following least squa
   x^{(t+1)} = \text{arg}\min_x \frac{1}{2}\|Bx - c\|_2^2
 \end{equation*}
 Where $B = H_S^{(t)}$ and $c = H_S^{(t)}x^{(t)} - G^{(t)}$.
-We can then determine the Lipschitz constant of the IHS update step as:
-\begin{equation*}
-  \begin{aligned}
-    L &= \|B\|_2^2 \\
-    &= \|H_S^{(t)}\|_2^2 \\
-    &= \|S^{(t)}A\|_2^4 \\
-    &\leq \|S^{(t)}\|_2^4 \cdot \|A\|_2^4
-  \end{aligned}
-\end{equation*}
-The looser constant in the last line would be useful because if we precompute $\|A\|_2^2$,
-only $\|S^{(t)}\|_2^2$ needs to be computed at each iteration, which is much faster than computing
-$\|S^{(t)}A\|_2^2$.
+This least squares problem is easier to solve and is $L$-Lipschitz with $L = \|B\|_2^2 = \|H_S^{(t)}\|_2^2 = \|S^{(t)}A\|_2^4$.
 
 \end{document}
