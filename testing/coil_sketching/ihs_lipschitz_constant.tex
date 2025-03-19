@@ -1,0 +1,82 @@
+% Source: http://tex.stackexchange.com/a/150903/23931
+\documentclass[11pt]{article}
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\renewcommand{\headrulewidth}{1.5pt}
+%\usepackage{tgschola} % or any other font package you like
+\usepackage{times}
+\usepackage{titlesec}
+\titlespacing*{\section}
+{0pt}{0.5ex}{0.7ex}
+%\renewcommand{\familydefault}{\rmdefault}
+\usepackage{lastpage}
+\usepackage{color}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{amssymb} % For \odot operator
+\usepackage{amsmath} % For equation* environment
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{%
+  \footnotesize
+  \fontsize{12}{12}
+  \large \soptitle\hspace{1cm}
+  \institution \hspace{1.2cm}
+  \yourname
+  }
+\fancyfoot[C]{\thepage}
+
+\newcommand{\institution}{Coil Sketching}
+\newcommand{\soptitle}{Update step Lipschitz constant calculation}
+\newcommand{\yourname}{David Frey}
+%\newcommand{\yourweb}{https://www.abcd.com/}
+%\newcommand{\youremail}{email@address.edu}
+
+\newcommand{\statement}[1]{\par\medskip
+  \underline{\textcolor{blue}{\textbf{#1:}}}\space
+}
+
+\begin{document}
+
+\noindent Let $H_S^{(t)} := (S^{(t)}A)^TS^{(t)}A$, and $G^{(t)} := A^T(Ax^{(t)}-b)$.
+The IHS update step is computed as:
+\begin{equation*}
+  \begin{aligned}
+    x^{(t+1)} &= \text{arg}\min_x \frac{1}{2}\|S^{(t)}A(x^{(t)}-x)\|_2^2 + (Ax^{(t)}-b)^TAx \\
+    &= \text{arg}\min_x \frac{1}{2}(x^{(t)}-x)^T H_S^{(t)} (x^{(t)}-x) + (G^{(t)})^Tx \\
+    &= \text{arg}\min_x \frac{1}{2}x^TH_S^{(t)}x - x^TH_S^{(t)}x^{(t)} + \frac{1}{2}(x^{(t)})^TH_S^{(t)}x^{(t)} + (G^{(t)})^T x \\
+    &= \text{arg}\min_x \frac{1}{2}\|S^{(t)}Ax\|_2^2 - x^TH_S^{(t)}x^{(t)} + (G^{(t)})^T x \\
+    &= \text{arg}\min_x \frac{1}{2}\|S^{(t)}Ax\|_2^2 - (H_S^{(t)}x^{(t)} - G^{(t)})^T x \\
+  \end{aligned}
+\end{equation*}
+Let $\tilde{f}_S^{(t)}(x) := \frac{1}{2}\|SAx\|_2^2 - (H_Sx^{(t)} - G^{(t)})^T x$. Then:
+\begin{equation*}
+  \begin{aligned}
+    \nabla \tilde{f}_S^{(t)}(x^{(t+1)}) &= (S^{(t)}A)^TS^{(t)}Ax^{(t+1)} - (H_S^{(t)}x^{(t)} - G^{(t)}) \\
+    &= H_S^{(t)}x^{(t+1)} - (H_S^{(t)}x^{(t)} - G^{(t)}) \\
+    &= 0 \\
+    \rightarrow x_*^{(t+1)} &= \text{arg}\min_x \frac{1}{2}\|H_S^{(t)}x - (H_S^{(t)}x^{(t)} - G^{(t)})\|_2^2 \\
+  \end{aligned}
+\end{equation*}
+Therefore, the IHS update step is equivalent to solving the following least squares problem:
+\begin{equation*}
+  x^{(t+1)} = \text{arg}\min_x \frac{1}{2}\|Bx - c\|_2^2
+\end{equation*}
+Where $B = H_S^{(t)}$ and $c = H_S^{(t)}x^{(t)} - G^{(t)}$.
+We can then determine the Lipschitz constant of the IHS update step as:
+\begin{equation*}
+  \begin{aligned}
+    L &= \|B\|_2^2 \\
+    &= \|H_S^{(t)}\|_2^2 \\
+    &= \|S^{(t)}A\|_2^4 \\
+    &\leq \|S^{(t)}\|_2^4 \cdot \|A\|_2^4
+  \end{aligned}
+\end{equation*}
+The looser constant in the last line would be useful because if we precompute $\|A\|_2^2$,
+only $\|S^{(t)}\|_2^2$ needs to be computed at each iteration, which is much faster than computing
+$\|S^{(t)}A\|_2^2$.
+
+\end{document}
