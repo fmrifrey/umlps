@@ -1,3 +1,6 @@
+% gets the current compatible packages for running code from this repo
+% by David Frey (djfrey@umich.edu)
+
 %% Pulseq
 fprintf('updating pulseq... ')
 system('[ -d "./pulseq" ] && rm -rf ./pulseq');

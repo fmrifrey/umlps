@@ -1,9 +1,8 @@
-function write_seq(varargin)
-% Create the .seq file for looping star sequence
-%
+function lps_write_seq(varargin)
+% create the sequence files for looping star in pulseq
 % by David Frey (djfrey@umich.edu)
 %
-% Inputs:
+% inputs:
 % tr - repetition time (ms)
 % fov - field of view (cm)
 % dt - raster time (s)
@@ -21,8 +20,9 @@ function write_seq(varargin)
 % pislquant - number of TRs to use for prescan
 % writepge - option to convert seq to pge file
 %
-% Outputs:
+% output files:
 % lps.seq file - seq file for pulseq
+% lps.pge file - seq file for pge2 interpreter
 % seq_args.mat - .mat file containing copy of input arguments
 %
 
@@ -64,7 +64,7 @@ function write_seq(varargin)
     warning('OFF', 'mr:restoreShape');
 
     % create looping star waveforms
-    [g_wav,rf_wav,rf_del] = lps.seq.gen_lps_waveforms( ...
+    [g_wav,rf_wav,rf_del] = lps.gen_lps_waveforms( ...
         'fov', arg.fov, ... % fov (cm)
         'N', arg.N, ... % nominal matrix size
         'nspokes', arg.nspokes, ... % number of lps spokes
@@ -100,7 +100,7 @@ function write_seq(varargin)
             for iint = 1:arg.nint
         
                 % rotate the gradients based on a 3DTGA rotation sequence
-                R = lps.seq.rot_3dtga(iprj, iint);
+                R = lps.rot_3dtga(iprj, iint);
                 iG = R * G0;
         
                 % write fID portion to sequence

@@ -1,4 +1,17 @@
 function [kdata,k_in,k_out,seq_args] = get_data(safile)
+% gets data from scanarchive file, and formats the kspace trajectories and
+% sequence arguments based on seq_args.mat
+% by David Frey (djfrey@umich.edu)
+%
+% inputs:
+% safile - name of scanarchive file to read in
+%
+% outputs:
+% kdata - kspace data (ndat x nprj x nint x nrep x ncoil)
+% k_in - spoke-in kspace trajectory (ndat x nprj x nint x nrep x 3)
+% k_out - spoke-out kspace trajectory (ndat x nprj x nint x nrep x 3)
+% seq_args - struct containing pulse sequence arguments
+%
 
     % get directory and file names
     d = dir(safile);
@@ -24,7 +37,7 @@ function [kdata,k_in,k_out,seq_args] = get_data(safile)
     kdata = permute(kdata,[1,5:-1:3,2]); % n x nprj x nint x nrep x nc
 
     % generate kspace trajectory
-    [~,~,~,k_in0,k_out0] = lps.seq.gen_lps_waveforms( ...
+    [~,~,~,k_in0,k_out0] = lps.gen_lps_waveforms( ...
         'fov', seq_args.fov, ... % fov (cm)
         'N', seq_args.N, ... % nominal matrix size
         'nspokes', seq_args.nspokes, ... % number of lps spokes
@@ -45,7 +58,7 @@ function [kdata,k_in,k_out,seq_args] = get_data(safile)
     k_out = zeros(ndat,3,seq_args.nprj,seq_args.nint);
     for iint = 1:seq_args.nint
         for iprj = 1:seq_args.nprj
-            R = lps.seq.rot_3dtga(iprj,iint);
+            R = lps.rot_3dtga(iprj,iint);
             k_in(:,:,iprj,iint) = k_in0 * R';
             k_out(:,:,iprj,iint) = k_out0 * R';
         end

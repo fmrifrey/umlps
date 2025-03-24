@@ -1,4 +1,27 @@
 function [g,rf,rf_del,k_in,k_out] = gen_lps_waveforms(varargin)
+% generates gradient and rf waveforms for a single looping star TR, also
+% returns trajectory
+% by David Frey (djfrey@umich.edu)
+%
+% inputs:
+% fov - field of view (cm)
+% N - nominal 3D matrix size
+% nspokes - number of spokes (or rf subpulses)
+% nseg - number of samples per spoke
+% nrf - number of samples per rf hard pulse
+% fa - flip angle (flip)
+% gmax - max gradient amplitude (G/cm)
+% smax - max slew rate (G/cm/s)
+% dt - raster time (s)
+% plotwavs - option to plot the waveforms
+%
+% outputs:
+% g - gradient waveforms (G/cm)
+% rf - rf waveform (G)
+% rf_del - number of samples to delay the rf waveform
+% k_in - kspace spoke-in trajectory (1/cm)
+% k_out - kspace spoke-out trajectory (1/cm)
+%
 
     % define default arguments
     arg.fov = 20; % fov (cm)
@@ -10,6 +33,7 @@ function [g,rf,rf_del,k_in,k_out] = gen_lps_waveforms(varargin)
     arg.gmax = 4; % max gradient amplitude (G/cm)
     arg.smax = 500; % max slew rate (G/cm/s)
     arg.dt = 4e-6; % raster time (s)
+    arg.plotwavs = false; % option to plot the waveforms
 
     gam = 4258; % GMR of H+ (Hz/G)
 
@@ -64,5 +88,17 @@ function [g,rf,rf_del,k_in,k_out] = gen_lps_waveforms(varargin)
     ktmp = circshift(k_spokes,arg.nseg,1); % shift along fast time to get spoke in
     ktmp = circshift(ktmp,-1,2); % shift along spokes to align spokes in time
     k_in = reshape(ktmp(1:arg.nseg,:,:),[],2); % spoke in
+
+    % plot the waveforms
+    if arg.plotwavs
+        yyaxis left
+        plot(1e3*arg.dt*(0:size(g,1)-1),g);
+        ylabel('gradient amp (G/cm)')
+        yyaxis right
+        plot(1e3*arg.dt*(rf_del + (0:length(rf)-1)),rf)
+        ylabel('rf amp (G)');
+        xlabel('time (ms)')
+        title('looping star waveforms');
+    end
 
 end

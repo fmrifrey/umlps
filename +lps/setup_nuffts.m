@@ -1,23 +1,24 @@
 function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
+% sets up the volume-wise nufft objects given kspace data, trajectory, and
+% desired indexing parameters
 % by David Frey (djfrey@umich.edu)
 %
-% Inputs:
-% safile - scanarchive data file name
-% prjs2use - projection indicies to use (array of indicies)
-% ints2use - interleaf indicies to use (array of indicies)
-% reps2use - repetition indicies to use (array of indicies)
+% inputs:
+% prjs2use - projection indicies to use (array of indicies, default all)
+% ints2use - interleaf indicies to use (array of indicies, default all)
+% reps2use - repetition indicies to use (array of indicies, default all)
 % rpv - rotations per volume (number of prjs/ints/reps to use per vol)
-% stride - number of rotations overlapping in each volume
+% stride - number of rotations overlapping in each volume (not yet
+% implemented)
 % (also reads arguments from seq_args.mat file in current directory)
 %
-% Outputs:
+% outputs:
 % Fs_in - cell array of nufft operators per volume (echo in)
 %   if spokewise = true, Fs_in will be spokewise and framewise
 % Fs_out - cell array of nufft operators per volume (echo out)
 %   same applies for spokewise = true
 % b - formatted kspace measurements
 %
-% Note: each scale is treated as a seperate frame of the reconstruction
 %
     
     % set default arguments
@@ -26,7 +27,6 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
     arg.reps2use = [];
     arg.rpv = [];
     arg.stride = 0; % still need to implement
-    arg.usepar = false; % still need to implement
 
     % parse arguments
     arg = vararg_pair(arg,varargin);
@@ -82,17 +82,17 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
     Fs_in = cell(nvol,1);
     Fs_out = cell(nvol,1);
     
-    % set up spoke-wise nufft objects and volume-wise dcf objects
+    % set up volume-wise dcf objects
     nufft_args = {seq_args.N*ones(1,3), 6*ones(1,3), 2*seq_args.N*ones(1,3), ...
         seq_args.N/2*ones(1,3), 'table', 2^10, 'minmax:kb'};
 
-    % loop through volumes and spokes
+    % loop through volumes
     for ivol = 1:nvol
         % get trajectory for current vol
         omegav_in = reshape(omega_in(:,ivol,:),[],3);
         omegav_out = reshape(omega_out(:,ivol,:),[],3);
 
-        % assemble nufft object for whole volume
+        % assemble nufft object for current vol
         Fs_in{ivol} = Gnufft( ...
             true(seq_args.N*ones(1,3)), ...
             [omegav_in, nufft_args]);

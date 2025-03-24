@@ -1,4 +1,18 @@
 function [Hs_in,Hs_out] = setup_filters(Fs_in,Fs_out,cutoff,rolloff)
+% sets up Fermi-shape filter for echo-in/out on kspace filter as a diagonal
+% fatrix
+% by David Frey (djfrey@umich.edu)
+%
+% inputs:
+% Fs_in - cell array of spoke-in NUFFT operators for each kspace volume
+% Fs_out - cell array of spoke-out NUFFT operators for each kspace volume
+% cutoff - kspace cutoff (as fraction of kmax)
+% rolloff - kspace filter rolloff (as fraction of kmax)
+%
+% outputs:
+% Hs_in - spoke-in filter operator (diagonal fatrix)
+% Hs_out - spoke-out filter operator (diagonal fatrix)
+%
 
     % get number of volumes
     nvol = length(Fs_in);

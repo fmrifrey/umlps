@@ -1,11 +1,17 @@
 function R = rot_3dtga(prjn,intn)
-% 3D TINY golden angle rotation sequence
+% returns rotation matrix based on 3D TINY golden angle rotation sequence
+% reference:
+% Fyrdahl, A., Holst, K., Caidahl, K. et al. Generalization of
+% three-dimensional golden-angle radial acquisition to reduce eddy current
+% artifacts in bSSFP CMR imaging. Magn Reson Mater Phy 34, 109–118 (2021).
+% https://doi.org/10.1007/s10334-020-00859-z
+% by David Frey (djfrey@umich.edu)
 %
-% Inputs:
+% inputs:
 % prjn - projection (thru-plane rotation) index
 % intn - interleaf (in-plane rotation) index
 %
-% Outputs:
+% outputs:
 % R - 3D golden angle rotation matrix
 %
 
