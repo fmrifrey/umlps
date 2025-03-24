@@ -4,7 +4,7 @@
 
 % read in data
 safile = './scanarc.h5'; % replace with scan archive file name
-[kdata,k_in,k_out,seq_args] = lps.rec.get_data(safile);
+[kdata,k_in,k_out,seq_args] = lps.get_data(safile);
 
 % save h5 file
 h5file = './lps_data.h5';
