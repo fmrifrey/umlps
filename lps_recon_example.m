@@ -3,7 +3,7 @@
 
 %% load the data
 safile = './scanarc.h5'; % scan archive file name
-[kdata,k_in,k_out,seq_args] = lps.get_data(safile);
+[kdata,k_in,k_out,seq_args] = lps_convert_data(safile);
 
 %% let up the volume-wise NUFFT objects and data
 [Fs_in,Fs_out,b] = lps.setup_nuffts(kdata,k_in,k_out,seq_args);
@@ -24,7 +24,7 @@ end
     );
 
 %% coil compress the data
-nc_cc = 1;
+nc_cc = 4;
 b_cc = ir_mri_coil_compress(b,'ncoil',nc_cc);
 
 %% reconstruct with RMS coil combination
