@@ -1,0 +1,21 @@
+# Create the environment umlps_recon_env from this file using:
+# conda env create -f umlps_recon_env.yml
+
+name: umlps_recon_env
+channels:
+  - nvidia
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.12
+  - numpy
+  - matplotlib
+  - torchvision
+  - scikit-image
+  - pip
+  - h5py
+  - ipykernel
+  - pip:
+      - git+https://github.com/fmrifrey/MIRTorch.git
+  - pytorch
+  - pytorch-cuda=12.1  # Ensures PyTorch uses CUDA 12.1
