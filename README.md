@@ -6,7 +6,7 @@ by David Frey (djfrey@umich.edu)
 ## File Structure
 - `lps_write_seq.m`: Function for writing LPS pulseq files
 - `lps_update_packages.m`: Script to update required external packages
-- `lps_convert_data.m`: Script to export data for external reconstruction
+- `lps_convert_data.m`: Function to read data from scanarchive and export to h5 for external reconstruction
 - `lps_recon_example.m`: Example script for reconstructing LPS data in MATLAB
 - `+lps/`: Contains core helper functions for LPS sequence and reconstruction
 
