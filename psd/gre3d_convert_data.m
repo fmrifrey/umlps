@@ -1,4 +1,4 @@
-function [kdata,seq_args] = gre3d_convert_data(safile,h5file)
+function [kdata,msk,seq_args] = gre3d_convert_data(safile,h5file)
 % gets data from scanarchive file, and formats the kspace trajectories and
 % sequence arguments based on seq_args.mat, then writes formatted data to
 % h5 file for external recon if specified
@@ -11,6 +11,7 @@ function [kdata,seq_args] = gre3d_convert_data(safile,h5file)
 %
 % outputs:
 % kdata - kspace data (Nx x Ny x Nz x ncoil)
+% msk - sampling mask (Nx x Ny x Nz)
 % seq_args - struct containing pulse sequence arguments
 %
 
@@ -34,14 +35,16 @@ function [kdata,seq_args] = gre3d_convert_data(safile,h5file)
     for n = 1:seq_args.pislquant
         currentControl = GERecon('Archive.Next', archive);
     end
-    
+
     % loop through shots
     for i = 1:npe
         currentControl = GERecon('Archive.Next', archive);
         if i == 1
             [~,nc] = size(currentControl.Data);
             d1 = zeros(seq_args.N, nc, seq_args.N, seq_args.N);
+            msk = zeros(seq_args.N*ones(1,3));
         end
+        msk(:,pe_idcs(i,1),pe_idcs(i,2)) = 1;
         d1(:,:,pe_idcs(i,1),pe_idcs(i,2)) = currentControl.Data;
     end
     
@@ -62,6 +65,9 @@ function [kdata,seq_args] = gre3d_convert_data(safile,h5file)
         h5create(h5file, '/kdata/imag', size(kdata), ...
             'Datatype', class(imag(kdata)));
         h5write(h5file, '/kdata/imag', imag(kdata));
+        h5create(h5file, '/msk', size(msk), ...
+            'Datatype', class(msk));
+        h5write(h5file, '/msk', msk);
 
         % save sequence arguments
         seq_args_fields = fieldnames(seq_args);
