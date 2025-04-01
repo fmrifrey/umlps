@@ -77,6 +77,7 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
 
     % format the kspace measurements volume-wise
     b = reshape(kdata,[],nvol,nc);
+    b = permute(b,[1,3,2]);
 
     % initialize volume-wise nufft operators
     Fs_in = cell(nvol,1);

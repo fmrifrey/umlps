@@ -25,7 +25,7 @@ function [kdata,k_in,k_out,seq_args] = lps_convert_data(safile, h5file)
     seq_args = load([sadir,'/seq_args.mat']);
 
     % load archive
-    archive = GERecon('Archive.Load', safile);
+    archive = GERecon('Archive.Load', [sadir,'/',safile]);
 
     % skip past receive gain calibration TRs (pislquant)
     for n = 1:seq_args.pislquant

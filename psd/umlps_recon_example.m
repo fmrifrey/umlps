@@ -2,58 +2,34 @@
 % by David Frey
 
 %% load the data
-safile_lp = './scanarc.h5'; % scan archive file name
-[kdata,k_in,k_out,seq_args] = lps_convert_data(safile_lp);
+safile_lps = 'lps_test/scanarc.h5'; % scan archive file name
+[kdata,k_in,k_out,seq_args] = lps_convert_data(safile_lps);
 
 %% let up the volume-wise NUFFT objects and data
-[Fs_in,Fs_out,b] = lpsutl.setup_nuffts(kdata,k_in,k_out,seq_args,'ints2use',1);
-nvol = size(b,2);
+[Fs_in,Fs_out,b] = lpsutl.setup_nuffts(kdata,k_in,k_out,seq_args);
+nvol = size(b,3);
 
 %% calculate density compensation
 Ws_in = cell(nvol,1);
 Ws_out = cell(nvol,1);
-for ivol = 1:nvol
+parfor ivol = 1:nvol
     Ws_in{ivol} = lpsutl.dcf_pipe(Fs_in{ivol});
     Ws_out{ivol} = lpsutl.dcf_pipe(Fs_out{ivol});
 end
 
 %% create the kspace echo-in/out filters
 [Hs_in,Hs_out] = lpsutl.setup_filters(Fs_in,Fs_out, ...
-    0.7, ... % kspace filter cutoff
+    0.8, ... % kspace filter cutoff
     0.1 ... % kspace filter rolloff
     );
 
 %% coil compress the data
-nc_cc = 16;
-[b_cc,~,Vr_cc] = ir_mri_coil_compress(b,'ncoil',nc_cc);
-
-%% reconstruct with dcNUFFT & RMS coil combination
-nvol = size(b,2);
-xv0 = zeros([seq_args.N*ones(1,3),nc_cc,nvol]);
-for ivol = 1:nvol
-
-    % set up problem for current volume
-    WAv = kronI(nc_cc, ...
-        Ws_in{ivol}*Hs_in{ivol}*Fs_in{ivol} + ...
-        Ws_out{ivol}*Hs_out{ivol}*Fs_out{ivol});
-    Av = kronI(nc_cc, ...
-        Hs_in{ivol}*Fs_in{ivol} + ...
-        Hs_out{ivol}*Fs_out{ivol});
-    bv = squeeze(b_cc(:,ivol,:));
-
-    % compute dc-NUFFT solution for volume
-    fprintf('reconstructing dc-NUFFT sol to vol %d/%d\n', ivol, nvol);
-    xv0 = WAv' * bv; % adjoint solution
-    xv0 = ir_wls_init_scale(Av, bv, xv0); % correct scale
-    xv0(:,:,:,:,ivol) = reshape(xv0,[seq_args.N*ones(1,3),nc_cc]);
-    
-end
-
-% compute rms
-img_lps_rms = sqrt(squeeze(sum(xv0.^2,4)));
+nc_cc = 8;
+[b_cc,~,Vr_cc] = ir_mri_coil_compress(permute(b,[1,3,2]),'ncoil',nc_cc);
+b_cc = permute(b_cc,[1,3,2]);
 
 %% estimate sensitivity maps from GRE data using eSPIRIT
-safile_gre = './scanarc.h5'; % scan archive file name
+safile_gre = 'gre/scanarc.h5'; % scan archive file name
 [gre_kdata,msk,gre_seq_args] = gre3d_convert_data(safile_gre);
 
 % coil compress the gre data
@@ -67,6 +43,11 @@ acs_data = gre_kdata_cc(acs_idcs,acs_idcs,acs_idcs,:);
 
 % estimate with eSPIRIT
 smaps_lr = bart('ecalib -b0 -m1', acs_data);
+
+%% recon the GRE data
+
+% upsample sensitivity maps
+smaps = lpsutl.resample3D(smaps_lr,gre_seq_args.N*ones(1,3));
 
 % create fft-SENSE operator
 F = fatrix2('idim', size(msk), ...
@@ -83,7 +64,7 @@ qp = Reg1(true(gre_seq_args.N*ones(1,3)), 'beta', beta);
 %     'loop', 1, 'dx', gre_seq_args.fov/gre_seq_args.N, ...
 %     'dz', gre_seq_args.fov/gre_seq_args.N);
 
-% recon the GRE data with quadratic penalizaed CG-SENSE
+% recon the GRE data with quadratic penalized CG-SENSE
 niter = 30;
 x0 = zeros(gre_seq_args.N*ones(1,3));
 ytmp = reshape(gre_kdata_cc,[],nc_cc);
@@ -93,10 +74,24 @@ img_gre = reshape(x_star,gre_seq_args.N*ones(1,3));
 
 %% reconstruct LpS data with SENSE recon
 niter = 30;
+par_vols = true;
 beta = 2^18;
 
-% upsample the sensitivity maps for gre recon
+% upsample the sensitivity maps for lps recon
 smaps = lpsutl.resample3D(smaps_lr,seq_args.N*ones(1,3));
+
+% initialize with dc-NUFFT adjoint SENSE recon
+HWs_in = cell(nvol,1);
+HWs_out = cell(nvol,1);
+for i = 1:nvol
+    HWs_in{i} = Hs_in{i}*Ws_in{i};
+    HWs_out{i} = Hs_out{i}*Ws_out{i};
+end
+WA = lpsutl.A_volwise(Fs_in,Fs_out,HWs_in,HWs_out,smaps,true);
+x0 = WA' * b_cc;
+
+% create the system matrix
+A = lpsutl.A_volwise(Fs_in,Fs_out,Hs_in,Hs_out,smaps,true);
 
 % make the regularizer (quadratic differencing penalty)
 qp = Reg1(true(seq_args.N*ones(1,3)),'beta',beta);
@@ -104,25 +99,7 @@ qp = Reg1(true(seq_args.N*ones(1,3)),'beta',beta);
 % qpwls_psf(Av1, qp.C, beta, true(seq_args.N*ones(1,3)),1, ...
 %     'loop', 1, 'dx', seq_args.fov/seq_args.N, 'dz', seq_args.fov/seq_args.N); % code to determine reg parameter
 
-img_lps = zeros([Fs_in{1}.idim,nvol]);
-for ivol = 1%:nvol
-
-    % set up problem for current volume
-    WAv = Asense(Ws_in{ivol}*Hs_in{ivol}*Fs_in{ivol} + ...
-        Ws_out{ivol}*Hs_out{ivol}*Fs_out{ivol}, smaps);
-    Av = Asense(Hs_in{ivol}*Fs_in{ivol} + ...
-        Hs_out{ivol}*Fs_out{ivol}, smaps);
-    bv = squeeze(b_cc(:,ivol,:));
-
-    % get initial dc-NUFFT solution for volume
-    fprintf('reconstructing initial sol to vol %d/%d\n', ivol, nvol);
-    xv0 = WAv' * bv; % adjoint solution
-    xv0 = ir_wls_init_scale(Av, bv, xv0); % correct scale
-    xv0 = reshape(xv0, seq_args.N*ones(1,3));
-
-    % solve with CG-SENSE
-    fprintf('reconstructing CG-SENSE sol for vol %d/%d\n', ivol, nvol);
-    x_star = qpwls_pcg1(xv0, Av, 1, bv(:), qp.C, 'niter', niter);
-    img_lps(:,:,:,ivol) = reshape(x_star,seq_args.N*ones(1,3));
-
-end
+%% solve with CG
+x0 = ir_wls_init_scale(A,b_cc,x0);
+x_star = qpwls_pcg1(x0, A, 1, b_cc(:), kronI(nvol,qp.C), 'niter', niter);
+img_lps = reshape(x_star,[seq_args.N*ones(1,3),nvol]);

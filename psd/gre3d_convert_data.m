@@ -24,7 +24,7 @@ function [kdata,msk,seq_args] = gre3d_convert_data(safile,h5file)
     seq_args = load([sadir,'/seq_args.mat']);
     
     % load archive
-    archive = GERecon('Archive.Load', safile);
+    archive = GERecon('Archive.Load', [sadir,'/',safile]);
     
     % get phase encode indicies
     pe_idcs = lpsutl.spout_caipi_idcs(seq_args.N, ...
