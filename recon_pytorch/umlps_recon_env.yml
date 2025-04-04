@@ -19,3 +19,5 @@ dependencies:
       - git+https://github.com/fmrifrey/MIRTorch.git
   - pytorch
   - pytorch-cuda=12.1  # Ensures PyTorch uses CUDA 12.1
+variables:
+  BART_TOOLBOX_PATH: /home/djfrey/code/packages/bart # <-- replace with your path to BART (git@github.com:mrirecon/bart.git)

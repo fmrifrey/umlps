@@ -68,7 +68,7 @@ function lps_write_seq(varargin)
     warning('OFF', 'mr:restoreShape');
 
     % create looping star waveforms
-    [g_wav,rf_wav,rf_del] = lpsutl.gen_lps_waveforms( ...
+    [g_wav,rf_wav,rf_del] = psdutl.gen_lps_waveforms( ...
         'fov', arg.fov, ... % fov (cm)
         'N', arg.N, ... % nominal matrix size
         'nspokes', arg.nspokes, ... % number of lps spokes
@@ -108,7 +108,7 @@ function lps_write_seq(varargin)
             [iint,iprj,~] = ind2sub([arg.nint,arg.nprj,arg.nrep],i);
     
             % rotate the gradients based on a 3DTGA rotation sequence
-            R = lpsutl.rot_3dtga(iprj, iint);
+            R = psdutl.rot_3dtga(iprj, iint);
             iG = R * G0;
         else
             % no transformation

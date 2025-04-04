@@ -28,3 +28,6 @@ example_data/
 *.out
 *.synctex.gz
 *.pdf
+
+# other
+__*__/

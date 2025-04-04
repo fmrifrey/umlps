@@ -8,8 +8,11 @@ function gre3d_write_seq(varargin)
 % te - TE (ms)
 % tr - TR (ms)
 % fov - fov (cm)
+% slabfrac - excitation slab width (fraction of fov)
 % fa - flip angle (deg)
 % rfspoil - RF spoiling option
+% fatsat - fat saturation option
+% fatChemShift - fat chemical shift (ppm)
 % N - 3D matrix size
 % Nacs - number of ACS lines (non-accelerated at center of kspace)
 % Ry - Ky acceleration factor
@@ -32,8 +35,11 @@ function gre3d_write_seq(varargin)
     arg.te = 'min'; % TE (ms)
     arg.tr = 30e-3; % TR (ms)
     arg.fov = 16; % fov (cm)
+    arg.slabfrac = 0.7; % excitation slab width (fraction of fov)
     arg.fa = 6; % flip angle (deg)
     arg.rfspoil = true; % RF spoiling option
+    arg.fatsat = false; % fat saturation option
+    arg.fatChemShift = 3.5; % fat chemical shift (ppm)
     arg.N = 128; % 3D matrix size
     arg.Nacs = 32; % width of fully sampled (ACS) region at center of kspace
     arg.Ry = 2; % Ky acceleration factor (outside ACS region)
@@ -62,16 +68,26 @@ function gre3d_write_seq(varargin)
         'B0', 3.0);
     
     % get phase encode indicies
-    pe_idcs = lpsutl.spout_caipi_idcs(arg.N, arg.Ry, arg.Rz, arg.Nacs);
+    pe_idcs = psdutl.spout_caipi_idcs(arg.N, arg.Ry, arg.Rz, arg.Nacs);
     npe = length(pe_idcs);
     
     % Create a new sequence object
     seq = mr.Sequence(sys);
+
+    % create fat excitation pulse
+    fatOffres = sys.gamma*sys.B0*arg.fatChemShift*1e-6;  % (Hz)
+    rf_fat = mr.makeGaussPulse(pi/2, ...
+        'Duration', 3e-3, ...
+        'freqOffset', -fatOffres, ...
+        'apodization', 0.42, ...
+        'use', 'saturation', ...
+        'timeBwProduct', 4, ...
+        'system', sys);
     
     % create excitation
     [rf, gz] = mr.makeSincPulse(arg.fa*pi/180, ...
         'Duration', 3e-3, ...
-        'SliceThickness', arg.fov*1e-2, ...
+        'SliceThickness', arg.slabfrac*arg.fov*1e-2, ...
         'apodization', 0.42, ...
         'use', 'excitation', ...
         'timeBwProduct', 4, ...
@@ -101,7 +117,7 @@ function gre3d_write_seq(varargin)
         'Duration', mr.calcDuration(gxPre), ...
         'system', sys);
     
-    % create spoilers
+    % create spoiler
     gxSpoil = mr.makeTrapezoid('x', ...
         'Area', 4*arg.N/(arg.fov*1e-2), ...
         'system', sys);
@@ -120,9 +136,10 @@ function gre3d_write_seq(varargin)
     end
     
     % determine repetition time delay
-    tr_min = mr.calcDuration(rf) + mr.calcDuration(gzReph) + ...
+    tr_min = arg.fatsat*mr.calcDuration(rf_fat) + mr.calcDuration(gxSpoil) + ...
+        mr.calcDuration(rf) + mr.calcDuration(gzReph) + ...
         mr.calcDuration(gzPre) + te_delay + mr.calcDuration(gx) + ...
-        max(mr.calcDuration(gxSpoil),mr.calcDuration(gzPre));
+        mr.calcDuration(gzPre);
     tr_min = sys.gradRasterTime*ceil(tr_min / sys.gradRasterTime);
     if strcmpi(arg.tr,'min')
         arg.tr = 1e3*tr_min;
@@ -141,17 +158,30 @@ function gre3d_write_seq(varargin)
     for i = (-arg.dummyshots-arg.pislquant+1):npe
         isDummyTR = i <= -arg.pislquant;
         isReceiveGainCalibrationTR = i < 1 & i > -arg.pislquant;
-    
+        lbl = mr.makeLabel('SET', 'TRID', 1 + isDummyTR + 2*isReceiveGainCalibrationTR);
+
         % calculate RF and ADC phase
         rf.phaseOffset = rf_phase/180*pi;
         adc.phaseOffset = rf_phase/180*pi;
         rf_inc = mod(rf_inc + arg.rfspoil*117, 360.0);
         rf_phase = mod(rf_phase + rf_inc, 360.0);
-    
-        % add excitation and refocuser
-        seq.addBlock(rf, gz, ...
-            mr.makeLabel('SET', 'TRID', 1 + isDummyTR + 2*isReceiveGainCalibrationTR));
-        seq.addBlock(gzReph);
+
+        if arg.fatsat
+            % add fat saturation
+            seq.addBlock(rf_fat, lbl);
+            seq.addBlock(gxSpoil);
+
+            % add excitation and refocuser
+            seq.addBlock(rf, gz);
+            seq.addBlock(gzReph);
+        else
+            % add spoiler
+            seq.addBlock(gxSpoil, lbl)
+
+            % add excitation and refocuser
+            seq.addBlock(rf, gz);
+            seq.addBlock(gzReph);
+        end
     
         % add te delay
         if te_delay > 0
@@ -183,8 +213,8 @@ function gre3d_write_seq(varargin)
             seq.addBlock(gx, adc);
         end
     
-        % add rephasing, spoiler, and TR delay
-        seq.addBlock(gxSpoil, mr.scaleGrad(gyPre, -pescy), ...
+        % add rephasing and TR delay
+        seq.addBlock(mr.scaleGrad(gyPre, -pescy), ...
             mr.scaleGrad(gzPre, -pescz));
         if tr_delay > 0
             seq.addBlock(mr.makeDelay(tr_delay));

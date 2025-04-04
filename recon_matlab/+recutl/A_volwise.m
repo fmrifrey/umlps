@@ -36,10 +36,10 @@ function A = A_volwise(Fs_in,Fs_out,Ws_in,Ws_out,smaps,usepar)
     end
 
     % if weighting is a scalar, make it a diagonal
-    if isscalar(Ws_in)
+    if isscalar(Ws_in) && ~iscell(Ws_in)
         Ws_in = repmat({Gdiag(Ws_in*ones(odimv(:),1))},[nvol,1]);
     end
-    if isscalar(Ws_out)
+    if isscalar(Ws_out) && ~iscell(Ws_in)
         Ws_out = repmat({Gdiag(Ws_out*ones(odimv(:),1))},[nvol,1]);
     end
     

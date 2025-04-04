@@ -27,7 +27,7 @@ function [kdata,msk,seq_args] = gre3d_convert_data(safile,h5file)
     archive = GERecon('Archive.Load', [sadir,'/',safile]);
     
     % get phase encode indicies
-    pe_idcs = lpsutl.spout_caipi_idcs(seq_args.N, ...
+    pe_idcs = psdutl.spout_caipi_idcs(seq_args.N, ...
         seq_args.Ry, seq_args.Rz, seq_args.Nacs);
     npe = length(pe_idcs);
 
@@ -68,6 +68,9 @@ function [kdata,msk,seq_args] = gre3d_convert_data(safile,h5file)
         h5create(h5file, '/msk', size(msk), ...
             'Datatype', class(msk));
         h5write(h5file, '/msk', msk);
+        h5create(h5file, '/ncoil', size(nc), ...
+            'Datatype', class(nc));
+        h5write(h5file, '/ncoil', nc);
 
         % save sequence arguments
         seq_args_fields = fieldnames(seq_args);
@@ -77,9 +80,11 @@ function [kdata,msk,seq_args] = gre3d_convert_data(safile,h5file)
             if islogical(val)
                 val = 1*val;
             end
-            h5create(h5file, sprintf('/seq_args/%s',field), size(val), ...
-                'Datatype', class(val));
-            h5write(h5file, sprintf('/seq_args/%s',field), val)
+            if ~ischar(val)
+                h5create(h5file, sprintf('/seq_args/%s',field), size(val), ...
+                    'Datatype', class(val));
+                h5write(h5file, sprintf('/seq_args/%s',field), val)
+            end
         end
 
     end

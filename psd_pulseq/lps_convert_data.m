@@ -45,7 +45,7 @@ function [kdata,k_in,k_out,seq_args] = lps_convert_data(safile, h5file)
     kdata = permute(kdata,[1,3:5,2]); % n x nint x nprj x nrep x nc
 
     % generate kspace trajectory
-    [~,~,~,k_in0,k_out0] = lpsutl.gen_lps_waveforms( ...
+    [~,~,~,k_in0,k_out0] = psdutl.gen_lps_waveforms( ...
         'fov', seq_args.fov, ... % fov (cm)
         'N', seq_args.N, ... % nominal matrix size
         'nspokes', seq_args.nspokes, ... % number of lps spokes
@@ -66,7 +66,7 @@ function [kdata,k_in,k_out,seq_args] = lps_convert_data(safile, h5file)
     k_out = zeros(ndat,3,seq_args.nint,seq_args.nprj);
     for iprj = 1:seq_args.nprj
         for iint = 1:seq_args.nint
-            R = lpsutl.rot_3dtga(iprj,iint);
+            R = psdutl.rot_3dtga(iprj,iint);
             k_in(:,:,iint,iprj) = k_in0 * R';
             k_out(:,:,iint,iprj) = k_out0 * R';
         end
@@ -99,6 +99,11 @@ function [kdata,k_in,k_out,seq_args] = lps_convert_data(safile, h5file)
         h5create(h5file, '/ktraj/spoke_out', size(k_out), 'Datatype', class(k_out));
         h5write(h5file, '/ktraj/spoke_out', k_out);
 
+        % save number of coils
+        h5create(h5file, '/ncoil', size(nc), ...
+            'Datatype', class(nc));
+        h5write(h5file, '/ncoil', nc);
+
         % save sequence arguments
         seq_args_fields = fieldnames(seq_args);
         for i = 1:numel(seq_args_fields)
@@ -107,9 +112,11 @@ function [kdata,k_in,k_out,seq_args] = lps_convert_data(safile, h5file)
             if islogical(val)
                 val = 1*val;
             end
-            h5create(h5file, sprintf('/seq_args/%s',field), size(val), ...
-                'Datatype', class(val));
-            h5write(h5file, sprintf('/seq_args/%s',field), val)
+            if ~ischar(val)
+                h5create(h5file, sprintf('/seq_args/%s',field), size(val), ...
+                    'Datatype', class(val));
+                h5write(h5file, sprintf('/seq_args/%s',field), val)
+            end
         end
 
     end
