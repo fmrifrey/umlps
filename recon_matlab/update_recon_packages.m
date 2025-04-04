@@ -15,6 +15,3 @@ system('git clone git@github.com:mrirecon/bart.git 2> /dev/null');
 system('cd ./bart && make 2> /dev/null && cd ../')
 fprintf('done.\n')
 run bart/startup
-
-%% Orchestra
-addpath ~/code/packages/orchestra-sdk-2.1-1.matlab/ % replace with path to orchestra
