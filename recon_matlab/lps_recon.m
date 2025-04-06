@@ -44,7 +44,7 @@ smaps = reshape(reshape(smaps,[],size(smaps,4))*Vr,[seq_args.N*ones(1,3),nc]);
 
 %% recon the data with CG-SENSE
 niter = 30;
-par_vols = false;
+par_vols = true;
 beta = 2^18;
 
 % initialize with dc-NUFFT adjoint SENSE recon

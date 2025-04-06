@@ -38,7 +38,7 @@ smaps = recutl.resample3D(smaps,seq_args.N*ones(1,3));
 smaps = reshape(reshape(smaps,[],size(smaps,4))*Vr,[seq_args.N*ones(1,3),nc]);
 
 %% recon the GRE data with CG-SENSE
-niter = 30; % number of CG iterations
+niter = 5; % number of CG iterations
 beta = 2^-4; % regularization parameter
 
 % create fft-SENSE operator
