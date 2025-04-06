@@ -17,6 +17,8 @@ function gre3d_write_seq(varargin)
 % Nacs - number of ACS lines (non-accelerated at center of kspace)
 % Ry - Ky acceleration factor
 % Rz - Kz acceleration factor
+% delta - CAIPI odd/even shift
+% peorder - phase encode ordering ('snake' or 'spout')
 % dummyshots - number of dummy shots (disdaqs) to play
 % gmax - max gradient amplitude (G/cm)
 % smax - max slew rate (G/cm/s)
@@ -44,6 +46,8 @@ function gre3d_write_seq(varargin)
     arg.Nacs = 32; % width of fully sampled (ACS) region at center of kspace
     arg.Ry = 2; % Ky acceleration factor (outside ACS region)
     arg.Rz = 2; % Kz acceleration factor (outside ACS region)
+    arg.delta = 1; % CAIPI odd/even shift
+    arg.peorder = 'snake'; % pe ordering scheme
     arg.dt = 20e-6; % ADC sampling rate (s)
     arg.dummyshots = 100; % number of dummy shots (disdaqs) to play
     arg.gmax = 4; % max gradient amplitude (G/cm)
@@ -68,7 +72,13 @@ function gre3d_write_seq(varargin)
         'B0', 3.0);
     
     % get phase encode indicies
-    pe_idcs = psdutl.spout_caipi_idcs(arg.N, arg.Ry, arg.Rz, arg.Nacs);
+    if strcmpi(arg.peorder,'snake')
+        pe_idcs = psdutl.snake_caipi_idcs(arg.N, arg.Ry, arg.Rz, arg.delta, arg.Nacs);
+    elseif strcmpi(arg.peorder,'spout')
+        pe_idcs = psdutl.spout_caipi_idcs(arg.N, arg.Ry, arg.Rz, arg.delta, arg.Nacs);
+    else
+        error('invalid option for peorder');
+    end
     npe = length(pe_idcs);
     
     % Create a new sequence object

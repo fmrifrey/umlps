@@ -1,4 +1,4 @@
-function idcs = spout_caipi_idcs(N, Ry, Rz, Nacs)
+function idcs = spout_caipi_idcs(N, Ry, Rz, delta, Nacs)
 % generate (row, col) indices in a spiral-out order from the center
 % with Nacs fully sampled lines at center of kspace, and (Ry,Rz) CAIPI
 % outside of ACS region
@@ -8,6 +8,7 @@ function idcs = spout_caipi_idcs(N, Ry, Rz, Nacs)
 % N - matrix size
 % Ry - y acceleration (outside of ACS region)
 % Rz - z acceleration (outside of ACS region)
+% delta - CAIPI shift per line
 % Nacs - number of ACS lines
 %
 % outputs:
@@ -25,11 +26,9 @@ function idcs = spout_caipi_idcs(N, Ry, Rz, Nacs)
     % get CAIPI indicies
     CAIPI_idcs = [];
     for iy = 1:Ry:N
-        for iz = 1:Rz:N
-            % only add indices where the sum of row and column is even (checkerboard pattern)
-            if mod(floor(iy / Ry) + floor(iz / Rz), 2) == 0
-                CAIPI_idcs = [CAIPI_idcs; iy, iz];
-            end
+        z_shift = delta*floor((iy-1)/Ry);
+        for iz = mod((0:Rz:N-1)  + z_shift, N) + 1
+            CAIPI_idcs = [CAIPI_idcs; iy, iz];
         end
     end
     

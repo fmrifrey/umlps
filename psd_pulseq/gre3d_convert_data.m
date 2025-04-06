@@ -27,8 +27,15 @@ function [kdata,msk,seq_args] = gre3d_convert_data(safile,h5file)
     archive = GERecon('Archive.Load', [sadir,'/',safile]);
     
     % get phase encode indicies
-    pe_idcs = psdutl.spout_caipi_idcs(seq_args.N, ...
-        seq_args.Ry, seq_args.Rz, seq_args.Nacs);
+    if strcmpi(seq_args.peorder,'snake')
+        pe_idcs = psdutl.snake_caipi_idcs(seq_args.N, seq_args.Ry, ...
+            seq_args.Rz, seq_args.delta, seq_args.Nacs);
+    elseif strcmpi(seq_args.peorder,'spout')
+        pe_idcs = psdutl.spout_caipi_idcs(seq_args.N, seq_args.Ry, ...
+            seq_args.Rz, seq_args.delta, seq_args.Nacs);
+    else
+        error('invalid option for peorder');
+    end
     npe = length(pe_idcs);
 
     % skip past receive gain calibration TRs (pislquant)
