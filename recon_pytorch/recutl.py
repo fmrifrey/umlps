@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-def coil_compress(data, ncoil=None, Vr=None):
+def mri_coil_compress(data, ncoil=None, Vr=None):
 
     # form column vectors of coil data
     data_cv = data.permute(0,*range(2,data.ndim),1).reshape(-1,data.shape[1])

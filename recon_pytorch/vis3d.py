@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def im(img, viewtype='montage', rows=None, cols=None, offset=None):
+def tim(img, viewtype='montage', rows=None, cols=None, offset=None):
     """
     Display a 3D image in different modes: montage, mid-slice, or maximum intensity projection.
     
@@ -17,7 +17,11 @@ def im(img, viewtype='montage', rows=None, cols=None, offset=None):
     """
     
     # get image size
-    Nx,Ny,Nz = img.shape
+    if img.ndim == 2:
+        Nx,Ny = img.shape
+        Nz = 1
+    elif img.ndim == 3:
+        Nx,Ny,Nz = img.shape
 
     if viewtype == 'montage':
     # 3D montage (lightbox) mode

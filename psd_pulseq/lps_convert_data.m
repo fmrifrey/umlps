@@ -10,9 +10,9 @@ function [kdata,k_in,k_out,seq_args] = lps_convert_data(safile, h5file)
 % to not write to file)
 %
 % outputs:
-% kdata - kspace data (ndat x nprj x nint x nrep x ncoil)
-% k_in - spoke-in kspace trajectory (ndat x nprj x nint x nrep x 3)
-% k_out - spoke-out kspace trajectory (ndat x nprj x nint x nrep x 3)
+% kdata - kspace data (ndat x nint x nprj x nrep x ncoil)
+% k_in - spoke-in kspace trajectory (ndat x nint x nprj x nrep x 3)
+% k_out - spoke-out kspace trajectory (ndat x nint x nprj x nrep x 3)
 % seq_args - struct containing pulse sequence arguments
 %
 
