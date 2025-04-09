@@ -129,8 +129,14 @@ function gre3d_write_seq(varargin)
         'Duration', mr.calcDuration(gxPre), ...
         'system', sys);
     
-    % create spoiler
+    % create spoilers
     gxSpoil = mr.makeTrapezoid('x', ...
+        'Area', 4*arg.N/(arg.fov*1e-2), ...
+        'system', sys);
+    gySpoil = mr.makeTrapezoid('y', ...
+        'Area', 4*arg.N/(arg.fov*1e-2), ...
+        'system', sys);
+    gzSpoil = mr.makeTrapezoid('z', ...
         'Area', 4*arg.N/(arg.fov*1e-2), ...
         'system', sys);
     
@@ -182,14 +188,14 @@ function gre3d_write_seq(varargin)
         if arg.fatsat
             % add fat saturation
             seq.addBlock(rf_fat, lbl);
-            seq.addBlock(gxSpoil);
+            seq.addBlock(gxSpoil, gySpoil, gzSpoil);
 
             % add excitation and refocuser
             seq.addBlock(rf, gz);
             seq.addBlock(gzReph);
         else
             % add spoiler
-            seq.addBlock(gxSpoil, lbl)
+            seq.addBlock(gxSpoil, gySpoil, gzSpoil, lbl)
 
             % add excitation and refocuser
             seq.addBlock(rf, gz);

@@ -12,6 +12,7 @@ dependencies:
   - matplotlib
   - torchvision
   - scikit-image
+  - argparse
   - pip
   - h5py
   - ipykernel
