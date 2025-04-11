@@ -34,12 +34,12 @@ args = parser.parse_args()
 if args.device == "cpu" or torch.cuda.is_available():
     device0 = torch.device(args.device)
 else:
-    print("GPU not available!")
-    device0 = torch.device("cpu")
-print(f'using device {device0}')
+    raise Error("GPU not available!", flush=True)
+    
+print(f'using device {device0}', flush=True)
 
 # load in the data
-print(f'loading data from {os.path.join(args.basedir,args.fname_kdata)}')
+print(f'loading data from {os.path.join(args.basedir,args.fname_kdata)}', flush=True)
 with h5py.File(os.path.join(args.basedir,args.fname_kdata), 'r') as h5_file:
     kdata = h5_file['kdata/real'][:] + 1j * h5_file['kdata/imag'][:] # kspace data
     k_in = h5_file['ktraj/spoke_in'][:] # kspace spoke-in trajectory (1/cm)
@@ -79,7 +79,7 @@ if args.volwidth is None:
 nvol = args.reps2use*args.prjs2use*args.ints2use // args.volwidth
 
 # arrange data into volumes
-print(f'arranging {args.reps2use*args.prjs2use*args.ints2use} TRs into {nvol} sampling volumes')
+print(f'arranging {args.reps2use*args.prjs2use*args.ints2use} TRs into {nvol} sampling volumes', flush=True)
 kdata2 = kdata.clone()
 kdata2 = kdata2[:,np.arange(args.reps2use),:,:,:]
 kdata2 = kdata2[:,:,np.arange(args.prjs2use),:,:]
@@ -109,13 +109,13 @@ k_out2 = k_out2.reshape(3,nvol,args.volwidth*nseg*nspokes)
 k_out2 = k_out2.permute(1,0,2)
 
 # load in the sensitivity maps
-print(f'loading sensitivity maps from {os.path.join(args.basedir,args.fname_smaps)}')
+print(f'loading sensitivity maps from {os.path.join(args.basedir,args.fname_smaps)}', flush=True)
 with h5py.File(os.path.join(args.basedir,args.fname_smaps), 'r') as h5_file:
     smaps = torch.tensor(h5_file['/real'][:] + 1j * h5_file['/imag'][:]).unsqueeze(0).to(kdata)
 smaps = smaps.permute(0,1,4,3,2) # 1 x C x X x Y x Z
 
 # coil compress the data
-print(f'compressing to {ncoil} coils to {args.ncoil_comp} virtual coils')
+print(f'compressing to {ncoil} coils to {args.ncoil_comp} virtual coils', flush=True)
 kdata_comp,Vr = mri_coil_compress(kdata2, ncoil=args.ncoil_comp)
 
 # coil compress the sensitivity maps
@@ -136,7 +136,7 @@ FS_in = NuSense(smaps_comp.to(device0), om_in.to(device0))
 FS_out = NuSense(smaps_comp.to(device0), om_out.to(device0))
 
 # set up system matrices and data
-print('setting up system matrices')
+print('setting up system matrices', flush=True)
 A = H_in*FS_in + H_out*FS_out
 AHA = A.H*A
 
@@ -152,12 +152,12 @@ AHy = A.H * y
 solv = CG(AHA_tikh, max_iter=args.niter)
 
 # solve with CG
-print('solving with CG')
+print('solving with CG', flush=True)
 x = solv.run(torch.zeros(nvol,1,N,N,N).to(kdata).to(device0), AHy)
 
 # save the reconstruction
 x = x.cpu().detach().numpy()
-print(f'saving reconstruction to {os.path.join(args.basedir,args.fname_out)}')
+print(f'saving reconstruction to {os.path.join(args.basedir,args.fname_out)}', flush=True)
 with h5py.File(os.path.join(args.basedir,args.fname_out), 'w') as h5_file:
     # save solution
     sol = h5_file.create_group('sol')

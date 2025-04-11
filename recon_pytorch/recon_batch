@@ -1,0 +1,39 @@
+#!/bin/bash
+#SBATCH --job-name=recon_lps_20250410
+#SBATCH --mail-user=djfrey@umich.edu
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --time=1:00:00
+#SBATCH --account=dnoll99
+#SBATCH --partition=spgpu
+#SBATCH --cpus-per-task=1
+#SBATCH --gres=gpu:1
+#SBATCH --mem=50000m
+#SBATCH --output=/home/djfrey/recon_batch.log
+
+# load cuda module for GPU
+echo "loading cuda module"
+module load cuda/12.1.1
+
+# check if conda is loaded
+if ! command -v conda >/dev/null 2>&1; then
+    echo "conda is not installed or not in PATH - loading it"
+    module load python3.11-anaconda/2024.02
+fi
+
+# check if the environment exists, if it does, update it, otherwise create it
+if conda env list | grep -qE "^umlps_recon_env\s"; then
+    echo "recon conda env not found, creating it..."
+    conda env update -f /home/djfrey/umlps/recon_pytorch/umlps_recon_env.yml
+else
+    echo "updating recon conda env..."
+    conda env create -f /home/djfrey/umlps/recon_pytorch/umlps_recon_env.yml
+fi
+
+# activate the conda environment
+echo "activating recon conda env..."
+source /sw/pkgs/arc/python3.11-anaconda/2024.02-1/etc/profile.d/conda.sh
+conda activate umlps_recon_env
+
+# run the reconstruction
+echo "running the recon..."
+srun python /home/djfrey/umlps/recon_pytorch/lps_recon.py --basedir "/home/djfrey/data/acr_testing_20250407/" --niter 30 --lam 0.5 --cutoff 0.9 --device "cuda:0" 
