@@ -8,7 +8,7 @@ from mirtorch.linear import NuSense, Diff3dgram, Diag
 from mirtorch.alg.cg import CG
 import os
 import sys
-from recutl import mri_coil_compress
+from recutl import mri_coil_compress, resize_nd
 import argparse
 
 # parse the input arguments
@@ -34,7 +34,7 @@ args = parser.parse_args()
 if args.device == "cpu" or torch.cuda.is_available():
     device0 = torch.device(args.device)
 else:
-    raise Error("GPU not available!", flush=True)
+    raise RuntimeError("GPU not available!")
     
 print(f'using device {device0}', flush=True)
 
@@ -112,7 +112,8 @@ k_out2 = k_out2.permute(1,0,2)
 print(f'loading sensitivity maps from {os.path.join(args.basedir,args.fname_smaps)}', flush=True)
 with h5py.File(os.path.join(args.basedir,args.fname_smaps), 'r') as h5_file:
     smaps = torch.tensor(h5_file['/real'][:] + 1j * h5_file['/imag'][:]).unsqueeze(0).to(kdata)
-smaps = smaps.permute(0,1,4,3,2) # 1 x C x X x Y x Z
+smaps = resize_nd(smaps, (2,3,4), N/smaps.shape[2]) # resize to match kspace data
+smaps = smaps.permute(0,1,4,3,2).repeat(nvol,1,1,1,1) # t x C x X x Y x Z
 
 # coil compress the data
 print(f'compressing to {ncoil} coils to {args.ncoil_comp} virtual coils', flush=True)
