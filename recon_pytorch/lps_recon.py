@@ -110,11 +110,15 @@ k_out2 = k_out2[:,:nvol*args.volwidth,:]
 k_out2 = k_out2.reshape(3,nvol,args.volwidth*nseg*nspokes)
 k_out2 = k_out2.permute(1,0,2)
 
+# calculate reconstructed matrix size
+if args.M is None:
+    args.M = int(np.ceil(N*args.cutoff))
+
 # load in the sensitivity maps
 print(f'loading sensitivity maps from {os.path.join(args.basedir,args.fname_smaps)}', flush=True)
 with h5py.File(os.path.join(args.basedir,args.fname_smaps), 'r') as h5_file:
     smaps = torch.tensor(h5_file['/real'][:] + 1j * h5_file['/imag'][:]).unsqueeze(0).to(kdata)
-smaps = resize_nd(smaps, (2,3,4), N/smaps.shape[2]) # resize to match kspace data
+smaps = resize_nd(smaps, (2,3,4), args.M/smaps.shape[2]) # resize to match kspace data
 smaps = smaps.permute(0,1,4,3,2) # t x C x X x Y x Z
 
 # coil compress the data
@@ -123,10 +127,6 @@ kdata_comp,Vr = mri_coil_compress(kdata2, ncoil=args.ncoil_comp)
 
 # coil compress the sensitivity maps
 smaps_comp,_ = mri_coil_compress(smaps, Vr=Vr)
-
-# calculate reconstructed matrix size
-if args.M is None:
-    args.M = int(np.ceil(N*args.cutoff))
 
 # convert trajectory to spatial frequencies
 om_in = 2*torch.pi * fov/args.M * k_in2
