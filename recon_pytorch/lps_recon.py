@@ -125,7 +125,8 @@ kdata_comp,Vr = mri_coil_compress(kdata2, ncoil=args.ncoil_comp)
 smaps_comp,_ = mri_coil_compress(smaps, Vr=Vr)
 
 # calculate reconstructed matrix size
-M = int(np.ceil(N*args.cutoff))
+if args.M is None:
+    args.M = int(np.ceil(N*args.cutoff))
 
 # convert trajectory to spatial frequencies
 om_in = 2*torch.pi * fov/args.M * k_in2
