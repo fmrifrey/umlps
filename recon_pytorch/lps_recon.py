@@ -15,19 +15,21 @@ import argparse
 parser = argparse.ArgumentParser(
     description="Looping star reconstruction code in PyTorch"
 )
-parser.add_argument("--basedir", required=False, type=str, default="./")
-parser.add_argument("--fname_kdata", required=False, type=str, default="lps.h5")
-parser.add_argument("--fname_smaps", required=False, type=str, default="smaps.h5")
-parser.add_argument("--fname_out", required=False, type=str, default="recon.h5")
-parser.add_argument("--device", required=False, type=str, default="cpu")
-parser.add_argument("--ncoil_comp", required=False, type=int, default=8)
-parser.add_argument("--cutoff", required=False, type=float, default=0.8)
-parser.add_argument("--lam", required=False, type=float, default=20)
-parser.add_argument("--niter", required=False, type=int, default=20)
-parser.add_argument("--ints2use", required=False, type=int, default=None)
-parser.add_argument("--prjs2use", required=False, type=int, default=None)
-parser.add_argument("--reps2use", required=False, type=int, default=None)
-parser.add_argument("--volwidth", required=False, type=int, default=None)
+parser.add_argument("--basedir", required=False, type=str, default="./") # name of base directory containing files
+parser.add_argument("--fname_kdata", required=False, type=str, default="lps.h5") # name of the GRE data file
+parser.add_argument("--fname_smaps", required=False, type=str, default="smaps.h5") # name of the sensitivity maps file
+parser.add_argument("--fname_out", required=False, type=str, default="recon.h5") # name of the output file
+parser.add_argument("--device", required=False, type=str, default="cpu") # device to use for reconstruction
+parser.add_argument("--ncoil_comp", required=False, type=int, default=8) # number of virtual coils to use
+parser.add_argument("--cutoff", required=False, type=float, default=0.8) # cutoff frequency for the echo-in/out filter
+parser.add_argument("--rolloff", required=False, type=float, default=0.1) # rolloff frequency for the echo-in/out filter
+parser.add_argument("--lam", required=False, type=float, default=0.1) # regularization parameter for the quadratic differencing penalty
+parser.add_argument("--niter", required=False, type=int, default=30) # number of iterations for the CG solver
+parser.add_argument("--M", required=False, type=int, default=None) # reconstruction matrix sizze (None = cutoff*N)
+parser.add_argument("--ints2use", required=False, type=int, default=None) # number of interleaves to use (None = all)
+parser.add_argument("--prjs2use", required=False, type=int, default=None) # number of projections to use (None = all)
+parser.add_argument("--reps2use", required=False, type=int, default=None) # number of repetitions to use (None = all)
+parser.add_argument("--volwidth", required=False, type=int, default=None) # number of projections to use in each volume (None = prjs2use*ints2use)
 args = parser.parse_args()
 
 # select device
@@ -113,7 +115,7 @@ print(f'loading sensitivity maps from {os.path.join(args.basedir,args.fname_smap
 with h5py.File(os.path.join(args.basedir,args.fname_smaps), 'r') as h5_file:
     smaps = torch.tensor(h5_file['/real'][:] + 1j * h5_file['/imag'][:]).unsqueeze(0).to(kdata)
 smaps = resize_nd(smaps, (2,3,4), N/smaps.shape[2]) # resize to match kspace data
-smaps = smaps.permute(0,1,4,3,2).repeat(nvol,1,1,1,1) # t x C x X x Y x Z
+smaps = smaps.permute(0,1,4,3,2) # t x C x X x Y x Z
 
 # coil compress the data
 print(f'compressing to {ncoil} coils to {args.ncoil_comp} virtual coils', flush=True)
@@ -122,13 +124,19 @@ kdata_comp,Vr = mri_coil_compress(kdata2, ncoil=args.ncoil_comp)
 # coil compress the sensitivity maps
 smaps_comp,_ = mri_coil_compress(smaps, Vr=Vr)
 
+# calculate reconstructed matrix size
+M = int(np.ceil(N*args.cutoff))
+
 # convert trajectory to spatial frequencies
-om_in = 2*torch.pi * fov/N * k_in2
-om_out = 2*torch.pi * fov/N * k_out2
+om_in = 2*torch.pi * fov/args.M * k_in2
+om_out = 2*torch.pi * fov/args.M * k_out2
 
 # create filter objects
-Hvec_in = 1*(torch.norm(om_in,2,dim=1,keepdim=True) <= args.cutoff*torch.pi).repeat(1,args.ncoil_comp,1)
-Hvec_out = 1*(torch.norm(om_out,2,dim=1,keepdim=True) <= args.cutoff*torch.pi).repeat(1,args.ncoil_comp,1)
+r_cut = args.cutoff * N/args.M * torch.pi
+r_roll = args.rolloff * N/args.M * torch.pi
+kfilt = lambda r: (r <= r_cut) * 1/(1 + torch.exp(2*torch.pi * (r - r_cut)/r_roll))
+Hvec_in = kfilt(torch.norm(om_in,2,dim=1,keepdim=True)).repeat(1,args.ncoil_comp,1)
+Hvec_out = kfilt(torch.norm(om_out,2,dim=1,keepdim=True)).repeat(1,args.ncoil_comp,1)
 H_in = Diag(Hvec_in.to(device0))
 H_out = Diag(Hvec_out.to(device0))
 

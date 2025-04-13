@@ -7,13 +7,13 @@ k_out = s.ktraj.spoke_out;
 seq_args = s.seq_args;
 
 %% set up the volume-wise NUFFT objects and data
-[Fs_in,Fs_out,b] = recutl.setup_nuffts(kdata,k_in,k_out,seq_args);
+[Fs_in,Fs_out,b] = recutl.setup_nuffts(kdata,k_in,k_out,seq_args,'rpv',32);
 nvol = size(b,3);
 
 %% calculate density compensation
 Ws_in = cell(nvol,1);
 Ws_out = cell(nvol,1);
-for ivol = 1:nvol
+parfor ivol = 1:nvol
     Ws_in{ivol} = recutl.dcf_pipe(Fs_in{ivol});
     Ws_out{ivol} = recutl.dcf_pipe(Fs_out{ivol});
 end
@@ -26,7 +26,7 @@ end
 
 %% load in the sensitivity maps and coil compress
 nc = 8; % number of virtual coils to keep
-fname = './smaps.h5'; % smap file to read from
+fname = '../smaps.h5'; % smap file to read from
 
 % load the smaps
 s = recutl.loadh5struct(fname);
@@ -45,7 +45,7 @@ smaps = reshape(reshape(smaps,[],size(smaps,4))*Vr,[seq_args.N*ones(1,3),nc]);
 %% recon the data with CG-SENSE
 niter = 30;
 par_vols = true;
-beta = 2^18;
+beta = 2^20;
 
 % initialize with dc-NUFFT adjoint SENSE recon
 HWs_in = cell(nvol,1);
