@@ -142,14 +142,14 @@ H_in = Diag(Hvec_in.to(device0))
 H_out = Diag(Hvec_out.to(device0))
 
 # create nufft system operators with flat sensitivity
-FS_in = NuSense(smaps_comp.to(device0), om_in.to(device0))
-FS_out = NuSense(smaps_comp.to(device0), om_out.to(device0))
+FS_in = NuSense(smaps_comp.to(device0), om_in.to(device0), nbatch=nvol)
+FS_out = NuSense(smaps_comp.to(device0), om_out.to(device0), nbatch=nvol)
 
 # set up system matrices and data
 print('setting up system matrices', flush=True)
 A = H_in*FS_in + H_out*FS_out
-G_in = NuSenseGram(smaps_comp.to(device0), om_in.to(device0), kweights=Hvec_in.to(device0))
-G_out = NuSenseGram(smaps_comp.to(device0), om_out.to(device0), kweights=Hvec_out.to(device0))
+G_in = NuSenseGram(smaps_comp.to(device0), om_in.to(device0), kweights=Hvec_in.to(device0), nbatch=nvol)
+G_out = NuSenseGram(smaps_comp.to(device0), om_out.to(device0), kweights=Hvec_out.to(device0), nbatch=nvol)
 AHA = G_in + G_out + 2*(H_in*FS_in).H*(H_out*FS_out)
 
 # add L2 roughness penalty
