@@ -4,7 +4,7 @@
 import h5py
 import numpy as np
 import torch
-from mirtorch.linear import NuSense, Diff3dgram, Diag
+from mirtorch.linear import NuSense, NuSenseGram, Diff3dgram, Diag
 from mirtorch.alg.cg import CG
 import os
 import sys
@@ -147,7 +147,9 @@ FS_out = NuSense(smaps_comp.to(device0), om_out.to(device0))
 # set up system matrices and data
 print('setting up system matrices', flush=True)
 A = H_in*FS_in + H_out*FS_out
-AHA = A.H*A
+G_in = NuSenseGram(smaps_comp.to(device0), om_in.to(device0), kweights=Hvec_in.to(device0))
+G_out = NuSenseGram(smaps_comp.to(device0), om_out.to(device0), kweights=Hvec_out.to(device0))
+AHA = G_in + G_out + 2*(H_in*FS_in).H*(H_out*FS_out)
 
 # add L2 roughness penalty
 THT = Diff3dgram(FS_in.size_in)

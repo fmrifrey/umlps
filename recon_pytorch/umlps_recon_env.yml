@@ -16,7 +16,7 @@ dependencies:
   - h5py
   - ipykernel
   - pip:
-      - git+https://github.com/fmrifrey/MIRTorch.git@smap_batch
+      - git+https://github.com/fmrifrey/MIRTorch.git
   - pytorch
   - pytorch-cuda=12.1  # Ensures PyTorch uses CUDA 12.1
 variables:
