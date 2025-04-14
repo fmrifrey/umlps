@@ -5,7 +5,7 @@ import h5py
 import numpy as np
 import torch
 from mirtorch.linear import NuSense, NuSenseGram, Diff3dgram, Diag
-from mirtorch.alg.cg import CG
+from mirtorch.alg import CG
 import os
 import sys
 from recutl import mri_coil_compress, resize_nd
@@ -30,6 +30,8 @@ parser.add_argument("--ints2use", required=False, type=int, default=None) # numb
 parser.add_argument("--prjs2use", required=False, type=int, default=None) # number of projections to use (None = all)
 parser.add_argument("--reps2use", required=False, type=int, default=None) # number of repetitions to use (None = all)
 parser.add_argument("--volwidth", required=False, type=int, default=None) # number of projections to use in each volume (None = prjs2use*ints2use)
+parser.add_argument("--use_toeplitz", required=False, type=bool, default=True) # use Toeplitz approximation of forward model
+parser.add_argument("--mem_save", required=False, type=bool, default=True) # only use GPU for forward model (slower but less memory)
 args = parser.parse_args()
 
 # select device
@@ -132,40 +134,55 @@ smaps_comp,_ = mri_coil_compress(smaps, Vr=Vr)
 om_in = 2*torch.pi * fov/args.M * k_in2
 om_out = 2*torch.pi * fov/args.M * k_out2
 
-# create filter objects
+# create kspace filter
 r_cut = args.cutoff * N/args.M * torch.pi
 r_roll = args.rolloff * N/args.M * torch.pi
 kfilt = lambda r: (r <= r_cut) * 1/(1 + torch.exp(2*torch.pi * (r - r_cut)/r_roll))
 Hvec_in = kfilt(torch.norm(om_in,2,dim=1,keepdim=True)).repeat(1,args.ncoil_comp,1)
 Hvec_out = kfilt(torch.norm(om_out,2,dim=1,keepdim=True)).repeat(1,args.ncoil_comp,1)
-H_in = Diag(Hvec_in.to(device0))
-H_out = Diag(Hvec_out.to(device0))
 
-# create nufft system operators with flat sensitivity
-FS_in = NuSense(smaps_comp.to(device0), om_in.to(device0), nbatch=nvol)
-FS_out = NuSense(smaps_comp.to(device0), om_out.to(device0), nbatch=nvol)
-
-# set up system matrices and data
+# set up system matrices
 print('setting up system matrices', flush=True)
+if args.mem_save:
+    H_in = Diag(Hvec_in)
+    H_out = Diag(Hvec_out)
+    FS_in = NuSense(smaps_comp, om_in, nbatch=nvol, device=device0)
+    FS_out = NuSense(smaps_comp, om_out, nbatch=nvol, device=device0)
+    y = kdata_comp
+    x0 = torch.zeros(nvol,1,args.M,args.M,args.M).to(y)
+else:
+    H_in = Diag(Hvec_in.to(device0))
+    H_out = Diag(Hvec_out.to(device0))
+    FS_in = NuSense(smaps_comp.to(device0), om_in.to(device0), nbatch=nvol)
+    FS_out = NuSense(smaps_comp.to(device0), om_out.to(device0), nbatch=nvol)
+    y = kdata_comp.to(device0)
+    x0 = torch.zeros(nvol,1,args.M,args.M,args.M).to(y).to(device0)
 A = H_in*FS_in + H_out*FS_out
-G_in = NuSenseGram(smaps_comp.to(device0), om_in.to(device0), kweights=Hvec_in.to(device0), nbatch=nvol)
-G_out = NuSenseGram(smaps_comp.to(device0), om_out.to(device0), kweights=Hvec_out.to(device0), nbatch=nvol)
-AHA = G_in + G_out + 2*(H_in*FS_in).H*(H_out*FS_out)
+
+# set up the gram matrix and RHS of normal equations
+print('setting up normal equations', flush=True)
+if args.use_toeplitz:
+    if args.mem_save:
+        G_in = NuSenseGram(smaps_comp, om_in, kweights=Hvec_in, nbatch=nvol, device=device0)
+        G_out = NuSenseGram(smaps_comp, om_out, kweights=Hvec_out, nbatch=nvol, device=device0)
+    else:
+        G_in = NuSenseGram(smaps_comp.to(device0), om_in.to(device0), kweights=Hvec_in.to(device0), nbatch=nvol)
+        G_out = NuSenseGram(smaps_comp.to(device0), om_out.to(device0), kweights=Hvec_out.to(device0), nbatch=nvol)
+    AHA = G_in + G_out + 2*(H_in*FS_in).H*(H_out*FS_out)
+else:
+    AHA = A.H * A
+AHy = A.H * y
 
 # add L2 roughness penalty
 THT = Diff3dgram(FS_in.size_in)
 AHA_tikh = AHA + args.lam*THT
-
-# set up data
-y = kdata_comp.to(device0)
-AHy = A.H * y
 
 # set up the CG solver
 solv = CG(AHA_tikh, max_iter=args.niter)
 
 # solve with CG
 print('solving with CG', flush=True)
-x = solv.run(torch.zeros(nvol,1,N,N,N).to(kdata).to(device0), AHy)
+x = solv.run(x0, AHy)
 
 # save the reconstruction
 x = x.cpu().detach().numpy()
