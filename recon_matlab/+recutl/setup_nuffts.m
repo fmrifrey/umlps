@@ -4,10 +4,10 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
 % by David Frey (djfrey@umich.edu)
 %
 % inputs:
-% prjs2use - projection indicies to use (array of indicies, default all)
-% ints2use - interleaf indicies to use (array of indicies, default all)
-% reps2use - repetition indicies to use (array of indicies, default all)
-% rpv - rotations per volume (number of prjs/ints/reps to use per vol)
+% prjs2use - number of projections to use (leave empty for all)
+% ints2use - number of interleaves to use (leave empty for all)
+% reps2use - number of repetitions to use (leave empty for all)
+% volwidth - rotations per volume (number of prjs/ints/reps to use per vol)
 % stride - number of rotations overlapping in each volume (not yet
 % implemented)
 % (also reads arguments from seq_args.mat file in current directory)
@@ -25,7 +25,7 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
     arg.ints2use = [];
     arg.prjs2use = [];
     arg.reps2use = [];
-    arg.rpv = [];
+    arg.volwidth = [];
     arg.stride = 0; % still need to implement
 
     % parse arguments
@@ -33,38 +33,29 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
     
     % determine loop indicies to use
     if isempty(arg.ints2use)
-        arg.ints2use = 1:seq_args.nint; % use all unique in-plane rotations
-        nint = seq_args.nint;
-    else
-        nint = length(arg.ints2use);
+        arg.ints2use = seq_args.nint; % use all unique in-plane rotations
     end
     if isempty(arg.prjs2use)
-        arg.prjs2use = 1:seq_args.nprj; % use all unique thru-plane rotations
-        nprj = seq_args.nprj;
-    else
-        nprj = length(arg.prjs2use);
+        arg.prjs2use = seq_args.nprj; % use all unique thru-plane rotations
     end
     if isempty(arg.reps2use)
-        arg.reps2use = 1:seq_args.nrep; % use all repetitions
-        nrep = seq_args.nrep;
-    else
-        nrep = length(arg.reps2use);
+        arg.reps2use = seq_args.nrep; % use all repetitions
     end
 
     % index desired loop indicies
-    kdata = kdata(:,arg.ints2use,arg.prjs2use,arg.reps2use,:);
-    k_in = k_in(:,arg.ints2use,arg.prjs2use,arg.reps2use,:);
-    k_out = k_out(:,arg.ints2use,arg.prjs2use,arg.reps2use,:);
+    kdata = kdata(:,1:arg.ints2use,1:arg.prjs2use,1:arg.reps2use,:);
+    k_in = k_in(:,1:arg.ints2use,1:arg.prjs2use,1:arg.reps2use,:);
+    k_out = k_out(:,1:arg.ints2use,1:arg.prjs2use,1:arg.reps2use,:);
 
     % split data and trajectory into 3D volumes
-    if isempty(arg.rpv)
-        arg.rpv = nint*nprj; % each rep is a vol
+    if isempty(arg.volwidth)
+        arg.volwidth = arg.ints2use*args.prjs2use; % each rep is a vol
     end
-    if mod(nint*nrep*nprj, arg.rpv)
+    if mod(arg.ints2use*arg.reps2use*arg.prjs2use, arg.volwidth)
         error('total planes (%d) must be divisible by rpv (%d)', ...
-            nint*nrep*nprj, arg.rpv)
+            arg.ints2use*arg.reps2use*arg.prjs2use, arg.volwidth)
     else
-        nvol = nint*nrep*nprj / arg.rpv;
+        nvol = arg.ints2use*arg.reps2use*arg.prjs2use / arg.volwidth;
     end
     nc = size(kdata,5);
     kdata = reshape(kdata,[],nvol,nc);

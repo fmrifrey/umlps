@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument("--basedir", required=False, type=str, default="./") # name of base directory containing files
 parser.add_argument("--fname_kdata", required=False, type=str, default="lps.h5") # name of the GRE data file
 parser.add_argument("--fname_smaps", required=False, type=str, default="smaps.h5") # name of the sensitivity maps file
-parser.add_argument("--fname_out", required=False, type=str, default="recon.h5") # name of the output file
+parser.add_argument("--fname_out", required=False, type=str, default=None) # name of the output file
 parser.add_argument("--device", required=False, type=str, default="cpu") # device to use for reconstruction
 parser.add_argument("--ncoil_comp", required=False, type=int, default=8) # number of virtual coils to use
 parser.add_argument("--cutoff", required=False, type=float, default=0.8) # cutoff frequency for the echo-in/out filter
@@ -185,6 +185,8 @@ print('solving with CG', flush=True)
 x = solv.run(x0, AHy)
 
 # save the reconstruction
+if args.fname_out is None:
+    args.fname_out = args.fname_kdata.split('.')[0] + '_recon.h5'
 x = x.cpu().detach().numpy()
 print(f'saving reconstruction to {os.path.join(args.basedir,args.fname_out)}', flush=True)
 with h5py.File(os.path.join(args.basedir,args.fname_out), 'w') as h5_file:
@@ -212,16 +214,13 @@ with h5py.File(os.path.join(args.basedir,args.fname_out), 'w') as h5_file:
 
     # save recon args
     recon_args = h5_file.create_group('recon_args')
-    recon_args.create_dataset("basedir", data=args.basedir)
-    recon_args.create_dataset("fname_kdata", data=args.fname_kdata)
-    recon_args.create_dataset("fname_smaps", data=args.fname_smaps)
-    recon_args.create_dataset("fname_out", data=args.fname_out)
-    recon_args.create_dataset("device", data=args.device)
     recon_args.create_dataset("ncoil_comp", data=args.ncoil_comp)
     recon_args.create_dataset("cutoff", data=args.cutoff)
+    recon_args.create_dataset("rolloff", data=args.rolloff)
     recon_args.create_dataset("lam", data=args.lam)
     recon_args.create_dataset("niter", data=args.niter)
     recon_args.create_dataset("ints2use", data=args.ints2use)
     recon_args.create_dataset("prjs2use", data=args.prjs2use)
     recon_args.create_dataset("reps2use", data=args.reps2use)
-    recon_args.create_dataset("volwidth", data=args.volwidth)    
+    recon_args.create_dataset("volwidth", data=args.volwidth)
+    recon_args.create_dataset("M", data=args.M)  
