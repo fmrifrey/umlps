@@ -2,17 +2,18 @@
 basedir = './'; % directory containing data
 fname_kdata = 'lps_fmri_unfold.h5'; % name of input .h5 file (in basedir)
 fname_smaps = 'smaps.h5'; % name of smaps .h5 file (in basedir)
-fname_out = split(fname_kdata,'.'); fname_out = [fname_out{1},'_recon.h5']; % name of output recon .h5 file (in basedir)
-ncoil_comp = 4; % number of coils to compress to
-cutoff = 0.8; % kspace cutoff for echo-in/out filtering
+fname_out = split(fname_kdata,'.'); fname_out = [fname_out{1},'_recon2.h5']; % name of output recon .h5 file (in basedir)
+ncoil_comp = 8; % number of coils to compress to
+cutoff = 0.85; % kspace cutoff for echo-in/out filtering
 rolloff = 0.1; % kspace rolloff for echo-in/out filtering
-beta = 2^20; % regularization parameter for quadratic finite differencing penalty
+beta = 0; % regularization parameter for quadratic finite differencing penalty
 niter = 30; % number of iterations for CG
-M = 92; % reconstruction matrix size (leave empty for cutoff * N)
+M = []; % reconstruction matrix size (leave empty for cutoff * N)
 ints2use = []; % number of interleaves to use (leave empty for all)
 prjs2use = []; % number of projections to use (leave empty for all)
 reps2use = []; % number of repetitions to use (leave empty for all)
 volwidth = 32; % number of projections per volume (leave empty for all)
+initdcf = false; % option to initialize with density compensated recon
 par_vols = true; % option to parallelize volume-wise computations
 
 %% load LpS data from h5 file
@@ -22,7 +23,7 @@ k_in = s.ktraj.spoke_in;
 k_out = s.ktraj.spoke_out;
 seq_args = s.seq_args;
 if isempty(M)
-    M = cutoff*seq_args.N;
+    M = 2*ceil(cutoff*seq_args.N/2);
 end
 
 %% set up the volume-wise NUFFT objects and data
@@ -39,31 +40,19 @@ if isempty(volwidth)
     volwidth = ints2use*prjs2use; % each rep is a vol
 end
 [Fs_in,Fs_out,b] = recutl.setup_nuffts(kdata,k_in,k_out,seq_args, ...
+    'M', M, ...
     'ints2use', ints2use, ...
     'prjs2use', prjs2use, ...
     'reps2use', reps2use, ...
-    'volwidth', volwidth);
+    'volwidth', volwidth, ...
+    'rmspoke1', true, ...
+    'rmspokeN', true);
 nvol = size(b,3);
-
-%% calculate density compensation
-Ws_in = cell(nvol,1);
-Ws_out = cell(nvol,1);
-if par_vols
-    parfor ivol = 1:nvol
-        Ws_in{ivol} = recutl.dcf_pipe(Fs_in{ivol});
-        Ws_out{ivol} = recutl.dcf_pipe(Fs_out{ivol});
-    end
-else
-    for ivol = 1:nvol
-        Ws_in{ivol} = recutl.dcf_pipe(Fs_in{ivol});
-        Ws_out{ivol} = recutl.dcf_pipe(Fs_out{ivol});
-    end
-end
 
 %% create the kspace echo-in/out filters
 [Hs_in,Hs_out] = recutl.setup_filters(Fs_in,Fs_out, ...
-    cutoff, ... % kspace filter cutoff
-    rolloff ... % kspace filter rolloff
+    seq_args.N/M*cutoff, ... % kspace filter cutoff
+    seq_args.N/M*rolloff ... % kspace filter rolloff
     );
 
 %% load in the sensitivity maps and coil compress
@@ -75,27 +64,44 @@ smaps = s.real + 1i*s.imag;
 b = permute(tmp,[1,3,2]);
 
 % upsample smaps
-smaps = recutl.resample3D(smaps,seq_args.N*ones(1,3));
+smaps = recutl.resample3D(smaps,M*ones(1,3));
 
 % coil compress the smaps
-smaps = reshape(reshape(smaps,[],size(smaps,4))*Vr,[seq_args.N*ones(1,3),ncoil_comp]);
+smaps = reshape(reshape(smaps,[],size(smaps,4))*Vr,[M*ones(1,3),ncoil_comp]);
 
-%% recon the data with CG-SENSE
-% initialize with dc-NUFFT adjoint SENSE recon
-HWs_in = cell(nvol,1);
-HWs_out = cell(nvol,1);
-for i = 1:nvol
-    HWs_in{i} = Hs_in{i}*Ws_in{i};
-    HWs_out{i} = Hs_out{i}*Ws_out{i};
-end
-WA = recutl.A_volwise(Fs_in,Fs_out,HWs_in,HWs_out,smaps,par_vols);
-x0 = WA' * b;
-
-% create the system matrix
+%% create the system matrix
 A = recutl.A_volwise(Fs_in,Fs_out,Hs_in,Hs_out,smaps,par_vols);
 
-% make the regularizer (quadratic differencing penalty)
-qp = Reg1(true(seq_args.N*ones(1,3)),'beta',beta);
+%% initialize the solution (dcf or zeros)
+if initdcf
+    Ws_in = cell(nvol,1);
+    Ws_out = cell(nvol,1);
+    if par_vols
+        parfor ivol = 1:nvol
+            Ws_in{ivol} = recutl.dcf_pipe(Fs_in{ivol});
+            Ws_out{ivol} = recutl.dcf_pipe(Fs_out{ivol});
+        end
+    else
+        for ivol = 1:nvol
+            Ws_in{ivol} = recutl.dcf_pipe(Fs_in{ivol});
+            Ws_out{ivol} = recutl.dcf_pipe(Fs_out{ivol});
+        end
+    end
+    HWs_in = cell(nvol,1);
+    HWs_out = cell(nvol,1);
+    for i = 1:nvol
+        HWs_in{i} = Hs_in{i}*Ws_in{i};
+        HWs_out{i} = Hs_out{i}*Ws_out{i};
+    end
+    WA = recutl.A_volwise(Fs_in,Fs_out,HWs_in,HWs_out,smaps,par_vols);
+    x0 = WA' * b;
+    x0 = ir_wls_init_scale(A,b,x0);
+else
+    x0 = zeros(A.idim);
+end
+
+%% make the regularizer (quadratic differencing penalty)
+qp = Reg1(true(M*ones(1,3)),'beta',beta);
 % % code to determine a good regularization parameter:
 % Av1 = Asense(Hs_in{1}*Fs_in{1} + Hs_out{1}*Fs_out{1}, smaps);
 % qpwls_psf(Av1, qp.C, beta, true(seq_args.N*ones(1,3)),1, ...
@@ -105,10 +111,9 @@ if nvol > 1
     T = kronI(nvol,T);
 end
 
-% solve with CG
-x0 = ir_wls_init_scale(A,b,x0);
+%% solve with CG
 x_star = qpwls_pcg1(x0, A, 1, b(:), T, 'niter', niter);
-img_lps = reshape(x_star,[seq_args.N*ones(1,3),nvol]);
+img_lps = reshape(x_star,[M*ones(1,3),nvol]);
 
 %% save to h5 recon file
 fname = fullfile(basedir,fname_out);
