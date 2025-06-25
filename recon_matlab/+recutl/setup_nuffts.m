@@ -77,6 +77,12 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
     % initialize volume-wise nufft operators
     Fs_in = cell(nvol,1);
     Fs_out = cell(nvol,1);
+
+    % create spherical mask
+    [Xgrd,Ygrd,Zgrd] = ndgrid(linspace(-1,1,arg.M), ...
+        linspace(-1,1,arg.M), ...
+        linspace(-1,1,arg.M));
+    msk = (Xgrd.^2 + Ygrd.^2 + Zgrd.^2) <= 1;
     
     % set up volume-wise dcf objects
     nufft_args = {arg.M*ones(1,3), 6*ones(1,3), 2*arg.M*ones(1,3), ...
@@ -89,12 +95,8 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
         omegav_out = reshape(omega_out(:,ivol,:),[],3);
 
         % assemble nufft object for current vol
-        Fs_in{ivol} = Gnufft( ...
-            true(arg.M*ones(1,3)), ...
-            [omegav_in, nufft_args]);
-        Fs_out{ivol} = Gnufft( ...
-            true(arg.M*ones(1,3)), ...
-            [omegav_out, nufft_args]);
+        Fs_in{ivol} = Gnufft(msk, [omegav_in, nufft_args]);
+        Fs_out{ivol} = Gnufft(msk, [omegav_out, nufft_args]);
     end
 
 end
