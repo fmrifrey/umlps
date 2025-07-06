@@ -48,12 +48,12 @@ function A = A_volwise(Fs_in,Fs_out,Ws_in,Ws_out,smaps,usepar)
         b = zeros([odimv,nc,nvol]);
         if usepar
             parfor v = 1:nvol
-                Av = recutl.senseop(Ws_in{v}*Fs_in{v} + Ws_out{v}*Fs_out{v}, smaps);
+                Av = recon.senseop(Ws_in{v}*Fs_in{v} + Ws_out{v}*Fs_out{v}, smaps);
                 b(:,:,v) = Av * x(:,:,:,v);
             end
         else
             for v = 1:nvol
-                Av = recutl.senseop(Ws_in{v}*Fs_in{v} + Ws_out{v}*Fs_out{v}, smaps);
+                Av = recon.senseop(Ws_in{v}*Fs_in{v} + Ws_out{v}*Fs_out{v}, smaps);
                 b(:,:,v) = Av * x(:,:,:,v);
             end
         end
@@ -64,12 +64,12 @@ function A = A_volwise(Fs_in,Fs_out,Ws_in,Ws_out,smaps,usepar)
         x = zeros([idimv,nvol]);
         if usepar
             parfor v = 1:nvol
-                Av = recutl.senseop(Ws_in{v}*Fs_in{v} + Ws_out{v}*Fs_out{v}, smaps);
+                Av = recon.senseop(Ws_in{v}*Fs_in{v} + Ws_out{v}*Fs_out{v}, smaps);
                 x(:,:,:,v) = Av' * b(:,:,v);
             end
         else
             for v = 1:nvol
-                Av = recutl.senseop(Ws_in{v}*Fs_in{v} + Ws_out{v}*Fs_out{v}, smaps);
+                Av = recon.senseop(Ws_in{v}*Fs_in{v} + Ws_out{v}*Fs_out{v}, smaps);
                 x(:,:,:,v) = Av' * b(:,:,v);
             end
         end

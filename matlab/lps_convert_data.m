@@ -45,12 +45,12 @@ function [kdata,k_in,k_out,seq_args] = lps_convert_data(safile, h5file)
     kdata = permute(kdata,[1,3:5,2]); % n x nint x nprj x nrep x nc
 
     % generate kspace trajectory
-    [~,~,~,k_in0,k_out0] = recutl.gen_lps_waveforms( ...
+    [~,~,~,k_in0,k_out0] = psd.gen_lps_waveforms( ...
         'fov', seq_args.fov, ... % fov (cm)
         'N', seq_args.N, ... % nominal matrix size
         'nspokes', seq_args.nspokes, ... % number of lps spokes
-        'nseg', seq_args.nseg, ... % number of samples/segment
-        'nrf', seq_args.nrf, ... % number of samples/rf pulse
+        'tseg', seq_args.tseg, ... % number of samples/segment
+        'trf', seq_args.trf, ... % number of samples/rf pulse
         'fa', seq_args.fa, ... % rf flip angle (deg)
         'gmax', seq_args.gmax, ... % max gradient amplitude (G/cm)
         'smax', seq_args.smax, ... % max slew rate (G/cm/s)
@@ -66,7 +66,7 @@ function [kdata,k_in,k_out,seq_args] = lps_convert_data(safile, h5file)
     k_out = zeros(ndat,3,seq_args.nint,seq_args.nprj);
     for iprj = 1:seq_args.nprj
         for iint = 1:seq_args.nint
-            R = recutl.rot_3dtga(iprj,iint);
+            R = psd.rot_3dtga(iprj,iint);
             k_in(:,:,iint,iprj) = k_in0 * R';
             k_out(:,:,iint,iprj) = k_out0 * R';
         end

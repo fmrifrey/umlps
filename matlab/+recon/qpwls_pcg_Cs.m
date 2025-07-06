@@ -1,17 +1,16 @@
- function [xs, info] = qpwls_pcg_Cs(x, A, W, yi, C1, C2, varargin)
-%function [xs, info] = qpwls_pcg_Cs(x, A, W, yi, C1, C2, [options])
+ function [xs, info] = qpwls_pcg_Cs(x, A, W, yi, Cs, varargin)
+%function [xs, info] = qpwls_pcg_Cs(x, A, W, yi, Cs, [options])
 %|
 %| quadratic penalized weighted least squares (QPWLS) via
 %| preconditioned conjugate gradients (PCG) algorithm
-%| cost(x) = (y-Ax)'W(y-Ax) / 2 + x'C1'C1x / 2 + x'C2'C2x / 2
+%| cost(x) = (y-Ax)'W(y-Ax) / 2 + x'Cs{1}'Cs{1}x / 2 + x'Cs{2}'Cs{2}x / 2 ...
 %|
 %| in
 %|	x	[np 1]		initial estimate
 %|	A	[nd np]		system matrix
 %|	W	[nd nd]		data weighting matrix, usually Gdiag(wi)
 %|	yi	[nd 1]		noisy data
-%|	C1	[nc np]		1st penalty 'differencing matrix' (0 for unregularized)
-%|	C2	[nc np]		2nd penalty 'differencing matrix' (0 for unregularized)
+%|	C	[nc np]		cell array of penalty 'differencing matrix' (0 for unregularized)
 %|
 %| options
 %|	niter			# total iterations (default: 1)
@@ -36,6 +35,7 @@
 %|	info	[niter 3]	gamma, step size, time each iteration
 %|
 %| Copyright Jan 1998, Jeff Fessler, University of Michigan
+%| Edited by David Frey, 2025, University of Michigan
 
 if nargin == 1 && streq(x, 'test'), qpwls_pcg1_test0, return, end
 if nargin < 5, ir_usage, end
@@ -86,18 +86,29 @@ end
 
 %info = zeros(arg.niter, ?); % trick: do not initialize because size may change
 
+% set up penalty arrays
+if ~iscell(Cs)
+    Cs = {Cs};
+end
+Cxs = cell(length(Cs),1);
+Cdirs = cell(length(Cs),1);
+
 % initialize projections
 ticker(mfilename, 1, arg.niter)
 Ax = A * x;
-C1x = C1 * x;
-C2x = C2 * x;
+for i = 1:length(Cs)
+    Cxs{i} = Cs{i} * x;
+end
 
 % iterate
 for iter = 1:arg.niter
 	ticker(mfilename, iter, arg.niter)
 
 	% (negative) gradient
-	ngrad = A' * (W * (yi-Ax)) - C1' * C1x - C2' * C2x;
+	ngrad = A' * (W * (yi-Ax));
+    for i = 1:length(Cs)
+        ngrad = ngrad - Cs{i}'*Cxs{i};
+    end
 
 	if arg.stop_grad_tol && norm_grad(ngrad) < arg.stop_grad_tol
 		if arg.chat
@@ -145,10 +156,14 @@ for iter = 1:arg.niter
 
 	% step size in search direction
 	Adir = A * ddir;
-	C1dir = C1 * ddir;
-    C2dir = C2 * ddir;
+    for i = 1:length(Cs)
+        Cdirs{i} = Cs{i}*ddir;
+    end
 
-	denom = Adir'*(W*Adir) + C1dir'*C1dir + C2dir'*C2dir;
+    denom = Adir'*(W*Adir);
+    for i = 1:length(Cs)
+        denom = denom + Cdirs{i}'*Cdirs{i};
+    end
 	denom = reale(denom, 'error', 'denom');
 	if denom == 0
 		warning 'found exact solution??? step=0 now!?'
@@ -166,8 +181,9 @@ for iter = 1:arg.niter
 
 	% update
 	Ax = Ax + step * Adir;
-	C1x = C1x + step * C1dir;
-    C2x = C2x + step * C2dir;
+    for i = 1:length(Cs)
+        Cxs{i} = Cxs{i} + step*Cdirs{i};
+    end
 	x = x + step * ddir;
 
 	if any(arg.isave == iter)

@@ -47,9 +47,10 @@ function [Fs_in,Fs_out,b] = setup_nuffts(kdata,k_in,k_out,seq_args,varargin)
     end
 
     % index desired loop indicies
-    kdata = kdata(seq_args.nseg*arg.rmspoke1+1:end-seq_args.nseg*arg.rmspokeN,1:arg.ints2use,1:arg.prjs2use,1:arg.reps2use,:);
-    k_in = k_in(seq_args.nseg*arg.rmspoke1+1:end-seq_args.nseg*arg.rmspokeN,1:arg.ints2use,1:arg.prjs2use,1:arg.reps2use,:);
-    k_out = k_out(seq_args.nseg*arg.rmspoke1+1:end-seq_args.nseg*arg.rmspokeN,1:arg.ints2use,1:arg.prjs2use,1:arg.reps2use,:);
+    nseg = round(seq_args.tseg*1e-6/seq_args.dt);
+    kdata = kdata(nseg*arg.rmspoke1+1:end-nseg*arg.rmspokeN,1:arg.ints2use,1:arg.prjs2use,1:arg.reps2use,:);
+    k_in = k_in(nseg*arg.rmspoke1+1:end-nseg*arg.rmspokeN,1:arg.ints2use,1:arg.prjs2use,1:arg.reps2use,:);
+    k_out = k_out(nseg*arg.rmspoke1+1:end-nseg*arg.rmspokeN,1:arg.ints2use,1:arg.prjs2use,1:arg.reps2use,:);
 
     % split data and trajectory into 3D volumes
     if isempty(arg.volwidth)

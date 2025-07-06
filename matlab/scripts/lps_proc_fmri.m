@@ -1,9 +1,11 @@
 %% load the image from .h5 file
-fname_recon = "./lps_fmri_unfold_recon2.h5";
-seq_args = fmriutl.loadh5struct(fname_recon, '/seq_args');
-recon_args = fmriutl.loadh5struct(fname_recon, '/recon_args');
-img_ts = abs(fmriutl.loadh5struct(fname_recon,'/sol').real + ...
-    1i*fmriutl.loadh5struct(fname_recon,'/sol').imag);
+%fname_recon = "./lps_fmri_unfold_motvis_recon.h5";
+fname_recon = fname_out;
+fname_recon = 'lps_fmri_unfold_recon_b1_0_b2_2to18.h5';
+seq_args = util.loadh5struct(fname_recon, '/seq_args');
+recon_args = util.loadh5struct(fname_recon, '/recon_args');
+img_ts = abs(util.loadh5struct(fname_recon,'/sol').real + ...
+    1i*util.loadh5struct(fname_recon,'/sol').imag);
 
 %% remove discarded frames
 ndiscard = 10;
@@ -11,10 +13,10 @@ nvol = size(img_ts,4);
 img_ts = img_ts(:,:,:,ndiscard+1:end);
 
 %% detrend the data
-img_ts = fmriutl.poly_detrend(img_ts,1);
+img_ts = fmri.poly_detrend(img_ts,2);
 
 %% set general plotting parameters
-slices2show = [15:62];
+slices2show = [30:35,51:56];
 
 % create brain mask
 msk = mean(abs(img_ts),4) > std(mean(abs(img_ts),4),[],1:3);
@@ -25,7 +27,7 @@ tdel = 0; % task onset delay (s)
 
 tr = seq_args.tr*1e-3*recon_args.volwidth; % volume TR (s)
 t = tr * (ndiscard:nvol-1); % time array (s)
-ref = fmriutl.fmri_act(t,tdur,tdur,tdel);
+ref = fmri.fmri_act(t,tdur,tdur,tdel);
 A = ref(:).^[0,1];
 
 figure
@@ -33,12 +35,12 @@ imagesc(A)
 
 %% perform UNFOLD filtering on the object
 vol_per_cyc = seq_args.nprj/recon_args.volwidth;
-[img_ts_unfold,unfold_filt] = fmriutl.unfold3d(img_ts,vol_per_cyc);
+[img_ts_unfold,unfold_filt] = fmri.unfold3d(img_ts,vol_per_cyc,7);
 
 %% calculate tscores
-[tscore, beta] = fmriutl.fmri_tscore(A, abs(img_ts));
+[tscore, beta] = fmri.fmri_tscore(A, abs(img_ts));
 df_unfold = size(A,1) - size(A,2) - sum(unfold_filt == 0); % subtract out notch filtered points
-[tscore_unfold, beta_unfold] = fmriutl.fmri_tscore(A, abs(img_ts_unfold), df_unfold);
+[tscore_unfold, beta_unfold] = fmri.fmri_tscore(A, abs(img_ts_unfold), df_unfold);
 
 %% plot images with and without UNFOLD
 figure 
@@ -76,19 +78,22 @@ cb.FontSize = 12;
 title('tSNR post-UNFOLD');
 
 %% view timeseries at ROI with and without UNFOLD
+figure
 f = (-(nvol-ndiscard)/2:(nvol-ndiscard)/2-1) * 1/(tr * (nvol-ndiscard));
 f_task = 1/(tdur*2); % task frequency (Hz)
 
 % create ROI mask
 off = [0.45,-0.1,0.3]; % ROI offset
 sma = [0.15,0.15,0.15]; % ROI semi-major axes
-roi = fmriutl.ellipsoid_mask(recon_args.M*ones(1,3),off,sma);
+%off = [0.2,-0.35,0.4]; % ROI offset
+%sma = [0.15,0.1,0.08]; % ROI semi-major axes
+roi = fmri.ellipsoid_mask(recon_args.M*ones(1,3),off,sma);
 
 normabsmean = @(x,x_ref) (squeeze(mean(abs(x),1)) - min(mean(abs(x_ref),1))) ...
     ./ (max(mean(abs(x_ref),1)) - min(mean(abs(x_ref),1)));
 
 subplot(4,2,[1,3]);
-ov1 = fmriutl.overlayview;
+ov1 = util.overlayview;
 ov1.addlayer(abs(img_ts(:,end:-1:1,slices2show,1))); % add underlay
 ov1.addlayer(roi(:,end:-1:1,slices2show).*abs(img_ts(:,end:-1:1,slices2show,1))/max(abs(img_ts(:,:,slices2show,1)),[],'all'), ...
     'caxis',[eps,0.5],'cmap',[0;1].*[0,0,1]); % add ROI
@@ -120,7 +125,7 @@ ylim([0,1])
 title('spectrum (minus DC)')
 
 subplot(4,2,[2,4]);
-ov2 = fmriutl.overlayview;
+ov2 = util.overlayview;
 ov2.addlayer(abs(img_ts_unfold(:,end:-1:1,slices2show,1))); % add underlay
 ov2.addlayer(roi(:,end:-1:1,slices2show).*abs(img_ts_unfold(:,end:-1:1,slices2show,1))/max(abs(img_ts_unfold(:,:,slices2show,1)),[],'all'), ...
     'caxis',[eps,0.5],'cmap',[0;1].*[0,0,1]); % add ROI
@@ -151,30 +156,27 @@ ylim([0,1])
 title('spectrum (minus DC)')
 
 %% plot the activation maps
-slices2show = 20:23;
-
-figure
 
 subplot(2,1,1);
-tscore_range = [0.5,2.5];
-ov3 = fmriutl.overlayview;
+tscore_range = [4,8];
+ov3 = util.overlayview;
 ov3.addlayer(abs(img_ts(:,end:-1:1,slices2show,1))); % add underlay
 % ov3.addlayer(tscore(:,:,slices2show,2), 'caxis', tscore_range, ...
 %     'cmap', 'winter'); % add neg act
 ov3.addlayer(tscore(:,end:-1:1,slices2show,2), 'caxis', tscore_range, ...
     'cmap', 'hot', 'name', 'tscore'); % add pos act
-ov3.show('viewargs',{'row',1});
+ov3.show('viewargs',{'row',2});
 axis off
-title('visual cortex pre-UNFOLD');
+title('activation maps pre-UNFOLD');
 
 subplot(2,1,2);
-tscore_range_unfold = [3,8];
-ov4 = fmriutl.overlayview;
-ov4.addlayer(abs(img_ts_unfold(:,end:-1:1,:,1))); % add underlay
+tscore_range_unfold = [4,8];
+ov4 = util.overlayview;
+ov4.addlayer(abs(img_ts_unfold(:,end:-1:1,slices2show,1))); % add underlay
 % ov4.addlayer(-tscore_unfold(:,:,slices2show,2), 'caxis', tscore_range_unfold, ...
 %     'cmap', 'winter'); % add neg act
-ov4.addlayer(tscore_unfold(:,end:-1:1,:,2), 'caxis', tscore_range_unfold, ...
+ov4.addlayer(tscore_unfold(:,end:-1:1,slices2show,2), 'caxis', tscore_range_unfold, ...
     'cmap', 'hot', 'name', 'tscore'); % add pos act
-ov4.show('viewargs',{'mid3'},'shift',[0,0,10]);
+ov4.show('viewargs',{'row',2});
 axis off
-title('visual cortex post-UNFOLD');
+title('activation maps post-UNFOLD');

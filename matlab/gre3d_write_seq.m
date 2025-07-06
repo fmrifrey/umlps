@@ -73,9 +73,9 @@ function gre3d_write_seq(varargin)
     
     % get phase encode indicies
     if strcmpi(arg.peorder,'snake')
-        pe_idcs = psdutl.snake_caipi_idcs(arg.N, arg.Ry, arg.Rz, arg.delta, arg.Nacs);
+        pe_idcs = psd.snake_caipi_idcs(arg.N, arg.Ry, arg.Rz, arg.delta, arg.Nacs);
     elseif strcmpi(arg.peorder,'spout')
-        pe_idcs = psdutl.spout_caipi_idcs(arg.N, arg.Ry, arg.Rz, arg.delta, arg.Nacs);
+        pe_idcs = psd.spout_caipi_idcs(arg.N, arg.Ry, arg.Rz, arg.delta, arg.Nacs);
     else
         error('invalid option for peorder');
     end

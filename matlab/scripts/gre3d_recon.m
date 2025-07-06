@@ -1,7 +1,7 @@
-fname = './gre3d.h5'; % gre h5 file to load
+fname = './gre3d_calib.h5'; % gre h5 file to load
 
 % load in the data
-s = recutl.loadh5struct(fname);
+s = util.loadh5struct(fname);
 kdata = s.kdata.real + 1i*s.kdata.imag;
 msk = s.msk;
 seq_args = s.seq_args;
@@ -25,14 +25,14 @@ nc = 8; % number of virtual coils to keep
 fname = './smaps.h5'; % smap file to read from
 
 % load the smaps
-s = recutl.loadh5struct(fname);
+s = util.loadh5struct(fname);
 smaps = s.real + 1i*s.imag;
 
 % compress data and get compression matrix
 [kdata,~,Vr] = ir_mri_coil_compress(kdata,'ncoil',nc);
 
 % upsample smaps
-smaps = recutl.resample3D(smaps,seq_args.N*ones(1,3));
+smaps = recon.resample3D(smaps,seq_args.N*ones(1,3));
 
 % coil compress the smaps
 smaps = reshape(reshape(smaps,[],size(smaps,4))*Vr,[seq_args.N*ones(1,3),nc]);
@@ -45,8 +45,8 @@ beta = 2^-4; % regularization parameter
 F = fatrix2('idim', size(msk), ...
     'odim', size(msk), ...
     'omask', msk==1, ...
-    'forw', @(~,x) recutl.fftc(x,[],1:3), ...
-    'back', @(~,x) recutl.ifftc(x,[],1:3));
+    'forw', @(~,x) util.fftc(x,[],1:3), ...
+    'back', @(~,x) util.ifftc(x,[],1:3));
 FS = Asense(F,smaps);
 
 % create the regularizer

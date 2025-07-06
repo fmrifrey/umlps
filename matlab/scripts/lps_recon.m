@@ -2,12 +2,12 @@
 basedir = './'; % directory containing data
 fname_kdata = 'lps_fmri_unfold.h5'; % name of input .h5 file (in basedir)
 fname_smaps = 'smaps.h5'; % name of smaps .h5 file (in basedir)
-% fname_out = split(fname_kdata,'.'); fname_out = [fname_out{1},'_recon_ufr2e11_50itr.h5']; % name of output recon .h5 file (in basedir)
+fname_out = split(fname_kdata,'.'); fname_out = [fname_out{1},'_recon.h5']; % name of output recon .h5 file (in basedir)
 ncoil_comp = 8; % number of coils to compress to
 cutoff = 0.85; % kspace cutoff for echo-in/out filtering
-rolloff = 0.15; % kspace rolloff for echo-in/out filtering
-% beta1 = 2e11; % regularization parameter for quadratic finite differencing penalty
-niter = 20; % number of iterations for CG
+rolloff = 0.1; % kspace rolloff for echo-in/out filtering
+beta = 0; % regularization parameter for quadratic finite differencing penalty
+niter = 30; % number of iterations for CG
 M = []; % reconstruction matrix size (leave empty for cutoff * N)
 ints2use = []; % number of interleaves to use (leave empty for all)
 prjs2use = []; % number of projections to use (leave empty for all)
@@ -17,7 +17,7 @@ initdcf = false; % option to initialize with density compensated recon
 par_vols = true; % option to parallelize volume-wise computations
 
 %% load LpS data from h5 file
-s = recutl.loadh5struct(fullfile(basedir,fname_kdata));
+s = util.loadh5struct(fullfile(basedir,fname_kdata));
 kdata = s.kdata.real + 1i*s.kdata.imag;
 k_in = s.ktraj.spoke_in;
 k_out = s.ktraj.spoke_out;
@@ -39,7 +39,7 @@ end
 if isempty(volwidth)
     volwidth = ints2use*prjs2use; % each rep is a vol
 end
-[Fs_in,Fs_out,b] = recutl.setup_nuffts(kdata,k_in,k_out,seq_args, ...
+[Fs_in,Fs_out,b] = recon.setup_nuffts(kdata,k_in,k_out,seq_args, ...
     'M', M, ...
     'ints2use', ints2use, ...
     'prjs2use', prjs2use, ...
@@ -50,13 +50,13 @@ end
 nvol = size(b,3);
 
 %% create the kspace echo-in/out filters
-[Hs_in,Hs_out] = recutl.setup_filters(Fs_in,Fs_out, ...
+[Hs_in,Hs_out] = recon.setup_filters(Fs_in,Fs_out, ...
     seq_args.N/M*cutoff, ... % kspace filter cutoff
     seq_args.N/M*rolloff ... % kspace filter rolloff
     );
 
 %% load in the sensitivity maps and coil compress
-s = recutl.loadh5struct(fullfile(basedir,fname_smaps));
+s = util.loadh5struct(fullfile(basedir,fname_smaps));
 smaps = s.real + 1i*s.imag;
 
 % compress data and get compression matrix
@@ -64,13 +64,13 @@ smaps = s.real + 1i*s.imag;
 b = permute(tmp,[1,3,2]);
 
 % upsample smaps
-smaps = recutl.resample3D(smaps,M*ones(1,3));
+smaps = recon.resample3D(smaps,M*ones(1,3));
 
 % coil compress the smaps
 smaps = reshape(reshape(smaps,[],size(smaps,4))*Vr,[M*ones(1,3),ncoil_comp]);
 
 %% create the system matrix
-A = recutl.A_volwise(Fs_in,Fs_out,Hs_in,Hs_out,smaps,par_vols);
+A = recon.A_volwise(Fs_in,Fs_out,Hs_in,Hs_out,smaps,par_vols);
 
 %% initialize the solution (dcf or zeros)
 if initdcf
@@ -78,13 +78,13 @@ if initdcf
     Ws_out = cell(nvol,1);
     if par_vols
         parfor ivol = 1:nvol
-            Ws_in{ivol} = recutl.dcf_pipe(Fs_in{ivol});
-            Ws_out{ivol} = recutl.dcf_pipe(Fs_out{ivol});
+            Ws_in{ivol} = recon.dcf_pipe(Fs_in{ivol});
+            Ws_out{ivol} = recon.dcf_pipe(Fs_out{ivol});
         end
     else
         for ivol = 1:nvol
-            Ws_in{ivol} = recutl.dcf_pipe(Fs_in{ivol});
-            Ws_out{ivol} = recutl.dcf_pipe(Fs_out{ivol});
+            Ws_in{ivol} = recon.dcf_pipe(Fs_in{ivol});
+            Ws_out{ivol} = recon.dcf_pipe(Fs_out{ivol});
         end
     end
     HWs_in = cell(nvol,1);
@@ -93,31 +93,26 @@ if initdcf
         HWs_in{i} = Hs_in{i}*Ws_in{i};
         HWs_out{i} = Hs_out{i}*Ws_out{i};
     end
-    WA = recutl.A_volwise(Fs_in,Fs_out,HWs_in,HWs_out,smaps,par_vols);
+    WA = recon.A_volwise(Fs_in,Fs_out,HWs_in,HWs_out,smaps,par_vols);
     x0 = WA' * b;
     x0 = ir_wls_init_scale(A,b,x0);
 else
     x0 = zeros(A.idim);
 end
 
-%% make the regularizer
-% qp = Reg1(true(M*ones(1,3)),'beta',beta);
+%% make the regularizer (spatial roughness penalty)
+qp = Reg1(true(M*ones(1,3)),'beta',beta);
 % % code to determine a good regularization parameter:
 % Av1 = Asense(Hs_in{1}*Fs_in{1} + Hs_out{1}*Fs_out{1}, smaps);
 % qpwls_psf(Av1, qp.C, beta, true(seq_args.N*ones(1,3)),1, ...
 %     'loop', 1, 'dx', seq_args.fov/seq_args.N, 'dz', seq_args.fov/seq_args.N);
-% T = qp.C;
-% if nvol > 1
-%     T = kronI(nvol,T);
-% end
-
-% UNFOLD regularization
-vol_per_cyc = seq_args.nprj/volwidth;
-T_peaks = recutl.extract_unfold3d_op(M*ones(1,3),nvol,vol_per_cyc,beta1); % spectral extraction
-T_rough = recutl.specdiff_unfold3d_op(M*ones(1,3),nvol,beta2);
+T = qp.C;
+if nvol > 1
+    T = kronI(nvol,T);
+end
 
 %% solve with CG
-x_star = recutl.qpwls_pcg_Cs(x0, A, 1, b(:), T_peaks, T_rough, 'niter', niter);
+x_star = qpwls_pcg1(x0, A, 1, b(:), T, 'niter', niter);
 img_lps = reshape(x_star,[M*ones(1,3),nvol]);
 
 %% save to h5 recon file
@@ -145,14 +140,15 @@ h5create(fname, '/seq_args/gmax', [1,1]);
 h5write(fname, '/seq_args/gmax', seq_args.gmax);
 h5create(fname, '/seq_args/smax', [1,1]);
 h5write(fname, '/seq_args/smax', seq_args.smax);
-h5create(fname, '/seq_args/nrf', [1,1]);
-h5write(fname, '/seq_args/nrf', seq_args.nrf);
+%%
+h5create(fname, '/seq_args/trf', [1,1]);
+h5write(fname, '/seq_args/trf', seq_args.trf);
 h5create(fname, '/seq_args/pislquant', [1,1]);
 h5write(fname, '/seq_args/pislquant', seq_args.pislquant);
 h5create(fname, '/seq_args/N', [1,1]);
 h5write(fname, '/seq_args/N', seq_args.N);
-h5create(fname, '/seq_args/nseg', [1,1]);
-h5write(fname, '/seq_args/nseg', seq_args.nseg);
+h5create(fname, '/seq_args/tseg', [1,1]);
+h5write(fname, '/seq_args/tseg', seq_args.tseg);
 h5create(fname, '/seq_args/nspokes', [1,1]);
 h5write(fname, '/seq_args/nspokes', seq_args.nspokes);
 h5create(fname, '/seq_args/nint', [1,1]);

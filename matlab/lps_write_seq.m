@@ -6,15 +6,15 @@ function lps_write_seq(varargin)
 % dir - output directory name
 % tr - repetition time (ms)
 % fov - field of view (cm)
-% dt - raster time (s)
+% dt - raster time (us)
 % N - 3D matrix size
 % dummyshots - number of dummy shots (disdaqs) to play
 % nrep - number of rotation sequence repetitions
 % nint - number of interleaves (2D in-plane rotations)
 % nprj - number of projections (3D thru-plane rotations)
 % nspokes - number of looping star spokes
-% nseg - number of samples/segment
-% nrf - number of samples/rf hard pulse
+% tseg - time per spoke (us)
+% trf - rf hard pulse width (us)
 % fa - flip angle (deg)
 % gmax - max gradient amplitude (G/cm)
 % smax - max slew rate (G/cm/s)
@@ -32,15 +32,15 @@ function lps_write_seq(varargin)
     arg.dir = pwd; % output directory name
     arg.tr = 100; % repetition time (ms)
     arg.fov = 20; % fov (cm)
-    arg.dt = 4e-6; % raster time (s)
+    arg.dt = 4; % raster time (us)
     arg.N = 128; % 3D matrix size
     arg.dummyshots = 20; % number of dummy shots
     arg.nrep = 1; % number of rotation sequence repetitions
     arg.nint = 1; % number of interleaves (2D in-plane rotations)
     arg.nprj = 16; % number of projections (3D thru-plane rotations)
     arg.nspokes = 23; % number of lps spokes
-    arg.nseg = 280; % number of samples/segment
-    arg.nrf = 4; % number of samples/rf pulse
+    arg.tseg = 1120; % time/segment (us)
+    arg.trf = 16; % time/rf pulse (us)
     arg.fa = 4; % rf flip angle (deg)
     arg.gmax = 4; % max gradient amplitude (G/cm)
     arg.smax = 500; % max slew rate (G/cm/s)
@@ -56,10 +56,10 @@ function lps_write_seq(varargin)
         'MaxSlew', arg.smax*1e-2, 'SlewUnit', 'mT/m/ms', ...
         'rfDeadTime', 100e-6, ...
         'rfRingdownTime', 60e-6, ...
-        'adcRasterTime', arg.dt, ...
-        'gradRasterTime', arg.dt, ...
-        'rfRasterTime', arg.dt, ...
-        'blockDurationRaster', 4e-6, ...
+        'adcRasterTime', arg.dt*1e-6, ...
+        'gradRasterTime', arg.dt*1e-6, ...
+        'rfRasterTime', arg.dt*1e-6, ...
+        'blockDurationRaster', arg.dt*1e-6, ...
         'B0', 3, ...
         'adcDeadTime', 0e-6);
     
@@ -68,12 +68,12 @@ function lps_write_seq(varargin)
     warning('OFF', 'mr:restoreShape');
 
     % create looping star waveforms
-    [g_wav,rf_wav,rf_del] = psdutl.gen_lps_waveforms( ...
+    [g_wav,rf_wav,rf_del] = psd.gen_lps_waveforms( ...
         'fov', arg.fov, ... % fov (cm)
         'N', arg.N, ... % nominal matrix size
         'nspokes', arg.nspokes, ... % number of lps spokes
-        'nseg', arg.nseg, ... % number of samples/segment
-        'nrf', arg.nrf, ... % number of samples/rf pulse
+        'tseg', arg.tseg, ... % number of samples/segment
+        'trf', arg.trf, ... % number of samples/rf pulse
         'fa', arg.fa, ... % rf flip angle (deg)
         'gmax', arg.gmax, ... % max gradient amplitude (G/cm)
         'smax', arg.smax, ... % max slew rate (G/cm/s)
@@ -84,19 +84,20 @@ function lps_write_seq(varargin)
 
     % create rf (only take 1st half to play during block 1)
     rf = mr.makeArbitraryRf(rf_wav, arg.nspokes*arg.fa*pi/180, ...
-        'delay', arg.dt*rf_del, ...
+        'delay', arg.dt*1e-6*rf_del, ...
         'use', 'excitation', ...
         'system', sys);
 
     % create ADC
-    acq_len = sys.adcSamplesDivisor*ceil(arg.nspokes*arg.nseg ...
+    nseg = round(arg.tseg/arg.dt);
+    acq_len = sys.adcSamplesDivisor*ceil(arg.nspokes*nseg ...
         /sys.adcSamplesDivisor);
     adc = mr.makeAdc(acq_len, ...
         'Duration', sys.adcRasterTime*acq_len, ...
         'system', sys);
 
     % create TR delay
-    tr_delay = mr.makeDelay(arg.tr*1e-3 - arg.dt*size(G0,2));
+    tr_delay = mr.makeDelay(arg.tr*1e-3 - arg.dt*1e-6*size(G0,2));
     
     % define sequence blocks
     for i = (-arg.dummyshots-arg.pislquant+1):arg.nrep*arg.nprj*arg.nint
@@ -108,7 +109,7 @@ function lps_write_seq(varargin)
             [iint,iprj,~] = ind2sub([arg.nint,arg.nprj,arg.nrep],i);
     
             % rotate the gradients based on a 3DTGA rotation sequence
-            R = psdutl.rot_3dtga(iprj, iint);
+            R = psd.rot_3dtga(iprj, iint);
             iG = R * G0;
         else
             % no transformation

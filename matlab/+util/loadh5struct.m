@@ -10,7 +10,7 @@ function s = loadh5struct(fname, groupName)
 % s - structure with same heirarchy as h5 file
 %
 
-    import recutl.*
+    import util.*
 
     if nargin < 2
         groupName = '/';
