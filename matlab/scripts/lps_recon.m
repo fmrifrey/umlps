@@ -72,21 +72,10 @@ smaps = reshape(reshape(smaps,[],size(smaps,4))*Vr,[M*ones(1,3),ncoil_comp]);
 %% create the system matrix
 A = recon.A_volwise(Fs_in,Fs_out,Hs_in,Hs_out,smaps,par_vols);
 
-%% initialize the solution (dcf or zeros)
-if initdcf
-    Ws_in = cell(nvol,1);
-    Ws_out = cell(nvol,1);
-    if par_vols
-        parfor ivol = 1:nvol
-            Ws_in{ivol} = recon.dcf_pipe(Fs_in{ivol});
-            Ws_out{ivol} = recon.dcf_pipe(Fs_out{ivol});
-        end
-    else
-        for ivol = 1:nvol
-            Ws_in{ivol} = recon.dcf_pipe(Fs_in{ivol});
-            Ws_out{ivol} = recon.dcf_pipe(Fs_out{ivol});
-        end
-    end
+%% initialize the solution
+if initdcf % use dcf-nuFFT solution
+    Ws_in = recon.dcf_pipe(Fs_in);
+    Ws_out = recon.dcf_pipe(Fs_out);
     HWs_in = cell(nvol,1);
     HWs_out = cell(nvol,1);
     for i = 1:nvol
@@ -96,7 +85,7 @@ if initdcf
     WA = recon.A_volwise(Fs_in,Fs_out,HWs_in,HWs_out,smaps,par_vols);
     x0 = WA' * b;
     x0 = ir_wls_init_scale(A,b,x0);
-else
+else % use zeros
     x0 = zeros(A.idim);
 end
 
@@ -120,6 +109,9 @@ fname = fullfile(basedir,fname_out);
 if exist(fname, 'file')
     delete(fname);
 end
+util.saveh5struct(fname,'/sol/real',real(img_lps));
+util.saveh5struct(fname,'/sol/imag',imag(img_lps));
+util.saveh5struct(fname,'/seq_args',seq_args);
 
 % save solution
 h5create(fname, '/sol/real', size(real(img_lps)));
